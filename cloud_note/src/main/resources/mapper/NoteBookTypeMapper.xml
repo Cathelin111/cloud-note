@@ -1,0 +1,12 @@
+<?xml version="1.0" encoding="UTF-8" ?>
+<!DOCTYPE mapper PUBLIC "-//ibatis.apache.org//DTD Mapper 3.0//EN"      
+ "http://ibatis.apache.org/dtd/ibatis-3-mapper.dtd">
+<mapper namespace="com.lcz.cloud_note.dao.NoteBookTypeDao">
+	<select id="findAllType" resultType="com.lcz.cloud_note.entity.NoteBookType">
+		select * from cn_notebook_type
+	</select>
+	
+	<select id="findByCode" parameterType="string" resultType="com.lcz.cloud_note.entity.NoteBookType">
+		select * from cn_notebook_type where cn_notebook_type_code=#{code}
+	</select>
+</mapper>

@@ -1,0 +1,58 @@
+<?xml version="1.0" encoding="UTF-8" ?>
+<!DOCTYPE mapper PUBLIC "-//ibatis.apache.org//DTD Mapper 3.0//EN"      
+ "http://ibatis.apache.org/dtd/ibatis-3-mapper.dtd">
+<mapper namespace="com.lcz.cloud_note.dao.BookDao">
+	<select id="findByUserId" parameterType="string" resultType="com.lcz.cloud_note.entity.Book">
+		select * from cn_notebook where cn_user_id=#{userId}
+		and cn_notebook_type_id in (
+			select cn_notebook_type_id from cn_notebook_type
+			where cn_notebook_type_code='normal'
+		)
+		order by cn_notebook_createtime desc
+	</select>
+	<insert id="save" parameterType="com.lcz.cloud_note.entity.Book">
+		insert into cn_notebook(
+			cn_notebook_id,
+			cn_user_id,
+			cn_notebook_type_id,
+			cn_notebook_name,
+			cn_notebook_desc,
+			cn_notebook_createtime)
+			values(
+			#{cn_notebook_id},
+			#{cn_user_id},
+			#{cn_notebook_type_id},
+			#{cn_notebook_name},
+			#{cn_notebook_desc},
+			#{cn_notebook_createtime}
+			)
+	</insert>
+	
+	<!-- 查询用户的特殊笔记本(收藏/回收站/活动/推送)，关联笔记本类型表带出类型代码 -->
+	<select id="findSpecialByUserId" parameterType="string" resultType="com.lcz.cloud_note.entity.Book">
+		select b.*, t.cn_notebook_type_code from cn_notebook b
+		inner join cn_notebook_type t
+		on b.cn_notebook_type_id=t.cn_notebook_type_id
+		where b.cn_user_id=#{userId}
+		and t.cn_notebook_type_code
+		in ('favorites','recycle','action','push')
+	</select>
+	
+	<!-- 修改笔记本名称 -->
+	<update id="updateName" parameterType="map">
+		update cn_notebook set cn_notebook_name=#{name} where cn_notebook_id=#{notebookId}
+	</update>
+	
+	<!-- 彻底删除笔记本 -->
+	<delete id="deleteById" parameterType="string">
+		delete from cn_notebook where cn_notebook_id=#{notebookId}
+	</delete>
+</mapper>
+
+
+
+
+
+
+
+

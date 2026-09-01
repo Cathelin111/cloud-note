@@ -1,0 +1,31 @@
+# Maven / Java 编译产物
+target/
+*.class
+*.jar
+*.war
+
+# Eclipse 项目文件
+.settings/
+.classpath
+.project
+.metadata/
+
+# IDE 配置
+.idea/
+*.iml
+.vscode/
+*.swp
+
+# 运行时/日志
+logs/
+*.log
+
+# Subversion 残留元数据
+.svn/
+
+# 系统文件
+.DS_Store
+Thumbs.db
+
+# 数据库备份（如不需要版本管理则保留此项）
+# *.sql
