@@ -1,0 +1,96 @@
+<!DOCTYPE html>
+<html>
+    <head>
+        <meta charset="utf-8">
+        <title>分享广场 - 云笔记</title>
+        <meta name="viewport" content="width=device-width, initial-scale=1.0">
+        <meta http-equiv="x-pjax-version" content="v173">
+        <link rel="stylesheet" href="styles/icon.css"/>
+        <link rel="stylesheet" href="styles/main.css"/>
+        <style>
+            .gs-top-links{float:left;margin-left:26px;line-height:60px;}
+            .gs-top-links a{color:#cfd8dc;display:inline-block;padding:0 14px;font-size:15px;line-height:58px;border-bottom:3px solid transparent;}
+            .gs-top-links a:hover,.gs-top-links a.active{color:#fff;text-decoration:none;border-bottom-color:#0e7d76;}
+            .gs-user{float:right;margin-right:26px;line-height:60px;color:#e0e0e0;font-size:13px;}
+            .gs-user a{color:#9ad5cf;margin-left:14px;}
+            .gs-user a:hover{color:#fff;text-decoration:underline;}
+            .gs-layout{display:flex;margin:16px 22px 0;min-height:72vh;align-items:flex-start;}
+            .gs-left{width:380px;flex:none;background:#fff;border:1px solid #e2e7ec;border-radius:4px;overflow:hidden;}
+            .gs-right{flex:1;margin-left:16px;background:#fff;border:1px solid #e2e7ec;border-radius:4px;min-height:72vh;}
+            .gs-search{padding:12px 14px;border-bottom:1px solid #eef1f4;background:#fafbfc;}
+            .gs-search input{width:78%;height:32px;border:1px solid #cfd8e0;border-radius:3px;padding:0 10px;font-size:14px;}
+            .gs-search .btn{margin-left:8px;}
+            .gs-list{max-height:640px;overflow:auto;}
+            .gs-item{display:block;padding:12px 14px;border-bottom:1px solid #f2f4f7;cursor:pointer;}
+            .gs-item:hover{background:#f4f9f8;}
+            .gs-item.active{background:#eaf4f2;border-left:3px solid #0e7d76;padding-left:11px;}
+            .gs-item h4{margin:0 0 6px;font-size:15px;font-weight:bold;color:#333;white-space:nowrap;overflow:hidden;text-overflow:ellipsis;}
+            .gs-item .gs-meta{color:#98a2ab;font-size:12px;}
+            .gs-item .gs-excerpt{color:#67747f;font-size:13px;margin-top:6px;max-height:40px;overflow:hidden;}
+            .gs-page{text-align:center;padding:10px 0;color:#8a949d;font-size:13px;border-top:1px solid #f2f4f7;}
+            .gs-page .btn{margin:0 6px;}
+            .gs-empty{text-align:center;color:#aab3bc;padding:60px 20px;font-size:14px;}
+            .gs-right .gs-head{padding:14px 20px;border-bottom:1px solid #eef1f4;}
+            .gs-right .gs-head h3{margin:0;font-size:17px;color:#33414d;}
+            .gs-body{padding:16px 24px 24px;min-height:58vh;line-height:1.9;font-size:15px;color:#3d4750;word-break:break-word;}
+            .gs-body .gs-author{color:#98a2ab;font-size:13px;margin-bottom:14px;}
+            .gs-body h3.gs-title{margin:0 0 6px;font-size:22px;color:#26333d;}
+            .gs-actions{padding:0 24px 26px;}
+            .gs-tip{color:#98a2ab;font-size:13px;margin-left:10px;}
+            .opacity_bg{display:none;}
+        </style>
+    </head>
+    <body class="animated fadeIn">
+        <header class="header">
+            <div class="header-brand">
+                <a href="guest.html">
+                    <img class="brand-logo" src="images/dummy/8986f28e.stilearn-logo.png" alt="云笔记">
+                </a>
+            </div>
+            <div class="gs-top-links">
+                <a href="guest.html" class="active"><i class="fa fa-share-alt"></i> 分享笔记</a>
+                <a href="activity.html"><i class="fa fa-rss"></i> 社区活动</a>
+            </div>
+            <div class="gs-user" id="gs_user_area"><!-- 由guest.js根据登录状态填充 --></div>
+        </header>
+
+        <div class="opacity_bg"></div>
+        <div id="can"></div>
+
+        <div class="gs-layout">
+            <!-- 左侧: 公开分享列表 -->
+            <div class="gs-left">
+                <div class="gs-search">
+                    <input type="text" id="gs_keyword" placeholder="搜索公开分享的笔记标题...">
+                    <button type="button" class="btn btn-primary" id="gs_search">搜索</button>
+                </div>
+                <div class="gs-list" id="gs_list"><!-- ajax加载 --></div>
+                <div class="gs-page" id="gs_page"><!-- 分页信息 --></div>
+            </div>
+            <!-- 右侧: 分享详情 -->
+            <div class="gs-right">
+                <div class="gs-head"><h3>分享详情</h3></div>
+                <div class="gs-body" id="gs_detail">
+                    <div class="gs-empty" id="gs_placeholder">
+                        <i class="fa fa-cloud" style="font-size:56px;color:#cfd8de;"></i>
+                        <p>欢迎来到云笔记分享广场</p>
+                        <p>这里展示平台上公开的分享笔记，游客无需登录即可浏览；<br/>登录或注册后还可以收藏喜欢的分享、参与社区活动。</p>
+                    </div>
+                </div>
+                <div class="gs-actions" id="gs_actions" style="display:none;">
+                    <button type="button" class="btn btn-primary" id="gs_favorite"><i class="fa fa-star-o"></i> 收藏该分享</button>
+                    <span class="gs-tip" id="gs_fav_tip">登录后可将分享收藏到自己的笔记中</span>
+                </div>
+            </div>
+        </div>
+
+        <footer style="text-align:center;color:#aab3bc;padding:18px 0;font-size:12px;">
+            云笔记 · 分享广场  —  未登录游客可浏览公开内容，<a href="log_in.html">登录 / 注册</a> 后使用完整功能
+        </footer>
+
+        <script type="text/javascript" src="scripts/common/jquery.min.js"></script>
+        <script type="text/javascript" src="scripts/base.js?v=20260902-role"></script>
+        <script type="text/javascript" src="scripts/cookie_util.js"></script>
+        <script type="text/javascript" src="scripts/guest.js"></script>
+    </body>
+</html>

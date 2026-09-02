@@ -10,7 +10,7 @@
 		select * from cn_note_activity
 		where cn_activity_id=#{activityId}
 		order by cn_note_activity_title
-		limit #{begin},#{pageSize}
+		limit #{pageSize} offset #{begin}
 	</select>
 	
 	<select id="findNoteActivityById" parameterType="string" resultType="com.lcz.cloud_note.entity.NoteActivity">
@@ -45,4 +45,41 @@
 			cn_note_activity_body=#{cn_note_activity_body}
 		where cn_note_activity_id=#{cn_note_activity_id}
 	</update>
+	
+	<!-- 后台: 新建活动 -->
+	<insert id="saveActivity" parameterType="com.lcz.cloud_note.entity.Activity">
+		insert into cn_activity(
+			cn_activity_id,
+			cn_activity_title,
+			cn_activity_body,
+			cn_activity_end_time)
+		values(
+			#{cn_activity_id},
+			#{cn_activity_title},
+			#{cn_activity_body},
+			#{cn_activity_end_time})
+	</insert>
+	<!-- 后台: 修改活动 -->
+	<update id="updateActivity" parameterType="com.lcz.cloud_note.entity.Activity">
+		update cn_activity set
+			cn_activity_title=#{cn_activity_title},
+			cn_activity_body=#{cn_activity_body},
+			cn_activity_end_time=#{cn_activity_end_time}
+		where cn_activity_id=#{cn_activity_id}
+	</update>
+	<!-- 后台: 删除活动 -->
+	<delete id="deleteById" parameterType="string">
+		delete from cn_activity where cn_activity_id=#{activityId}
+	</delete>
+	<!-- 后台: 删除某活动下的全部投稿 -->
+	<delete id="deleteNoteActivityByActivityId" parameterType="string">
+		delete from cn_note_activity where cn_activity_id=#{activityId}
+	</delete>
+	<!-- 删除引用指定笔记列表的投稿(删除用户时级联清理) -->
+	<delete id="deleteNoteActivityByNoteIds" parameterType="list">
+		delete from cn_note_activity where cn_note_id in
+		<foreach collection="list" item="noteId" open="(" separator="," close=")">
+			#{noteId}
+		</foreach>
+	</delete>
 </mapper>

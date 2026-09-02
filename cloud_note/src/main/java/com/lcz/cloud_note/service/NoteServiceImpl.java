@@ -185,6 +185,12 @@ public class NoteServiceImpl implements NoteService {
 			result.setMsg("分享不存在");
 			return result;
 		}
+		//被管理员下架的分享不允许收藏
+		if(!"normal".equals(share.getCn_share_status())) {
+			result.setStatus(3);
+			result.setMsg("该分享已被管理员下架, 无法收藏");
+			return result;
+		}
 		//获取用户的收藏笔记本(不存在则自动创建)
 		Book favoritesBook = getOrCreateSpecialBook(userId, "favorites", "收藏");
 		if(favoritesBook==null) {

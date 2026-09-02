@@ -1,0 +1,140 @@
+<!DOCTYPE html>
+<html>
+    <head>
+        <meta charset="utf-8">
+        <title>云笔记后台管理</title>
+        <meta name="viewport" content="width=device-width, initial-scale=1.0">
+        <meta http-equiv="x-pjax-version" content="v173">
+        <link rel="stylesheet" href="styles/icon.css"/>
+        <link rel="stylesheet" href="styles/main.css"/>
+        <style>
+            .adm-top{float:right;margin-right:26px;line-height:60px;color:#e0e0e0;font-size:13px;}
+            .adm-top a{color:#9ad5cf;margin-left:14px;}
+            .adm-top a:hover{color:#fff;text-decoration:underline;}
+            .adm-layout{display:flex;margin:16px 22px 0;min-height:74vh;align-items:flex-start;}
+            .adm-menu{width:170px;flex:none;background:#fff;border:1px solid #e2e7ec;border-radius:4px;overflow:hidden;}
+            .adm-menu a{display:block;padding:14px 18px;color:#33414d;border-bottom:1px solid #f2f4f7;font-size:14px;cursor:pointer;}
+            .adm-menu a:hover{background:#f4f9f8;}
+            .adm-menu a.active{background:#0e7d76;color:#fff;}
+            .adm-main{flex:1;margin-left:16px;background:#fff;border:1px solid #e2e7ec;border-radius:4px;min-height:74vh;padding:18px 22px;}
+            .adm-main h3{margin:0 0 16px;font-size:18px;color:#26333d;}
+            .adm-panel{display:none;}
+            .adm-toolbar{margin-bottom:12px;}
+            .adm-toolbar input[type=text]{width:240px;height:32px;border:1px solid #cfd8e0;border-radius:3px;padding:0 10px;font-size:14px;}
+            .adm-toolbar .btn{margin-left:8px;}
+            .adm-table{width:100%;border-collapse:collapse;font-size:14px;}
+            .adm-table th{background:#f4f7f9;color:#5a6772;text-align:left;padding:10px 12px;border:1px solid #e7ecf0;font-weight:bold;}
+            .adm-table td{padding:9px 12px;border:1px solid #eef1f4;color:#3d4750;word-break:break-all;}
+            .adm-table tr:hover td{background:#fafdfc;}
+            .adm-table .t-title{max-width:340px;}
+            .adm-table .t-actions{white-space:nowrap;}
+            .adm-table .btn{margin-right:6px;}
+            .adm-tag{padding:2px 10px;border-radius:10px;font-size:12px;}
+            .adm-tag.ok{background:#e4f4ea;color:#2e8b57;}
+            .adm-tag.warn{background:#fdeaea;color:#d64545;}
+            .adm-tag.info{background:#e6f0fa;color:#2a6db5;}
+            .adm-page{margin-top:14px;color:#8a949d;font-size:13px;}
+            .adm-empty{color:#aab3bc;text-align:center;padding:50px 0;}
+            .adm-form{background:#f7fafb;border:1px solid #e2e7ec;border-radius:4px;padding:14px 16px;margin-bottom:16px;}
+            .adm-form label{display:inline-block;width:80px;color:#5a6772;}
+            .adm-form input[type=text],.adm-form input[type=datetime-local]{width:300px;height:30px;border:1px solid #cfd8e0;border-radius:3px;padding:0 8px;}
+            .adm-form textarea{width:calc(100% - 90px);min-height:64px;border:1px solid #cfd8e0;border-radius:3px;padding:6px 8px;vertical-align:top;font-size:14px;}
+            .adm-form .f-row{margin:8px 0;}
+            .adm-form .hint{color:#98a2ab;font-size:12px;margin-left:90px;}
+            .opacity_bg{display:none;}
+            .t-time{color:#8a949d;font-size:12px;}
+        </style>
+    </head>
+    <body class="animated fadeIn">
+        <header class="header">
+            <div class="header-brand">
+                <a href="admin.html">
+                    <img class="brand-logo" src="images/dummy/8986f28e.stilearn-logo.png" alt="云笔记">
+                </a>
+            </div>
+            <div class="adm-top" id="adm_user_area"><!-- admin.js填充 --></div>
+        </header>
+
+        <div class="opacity_bg"></div>
+        <div id="can"></div>
+
+        <div class="adm-layout">
+            <!-- 左侧菜单 -->
+            <div class="adm-menu">
+                <a class="active" data-panel="user"><i class="fa fa-users"></i> 用户管理</a>
+                <a data-panel="share"><i class="fa fa-share-alt"></i> 分享管理</a>
+                <a data-panel="activity"><i class="fa fa-calendar"></i> 活动管理</a>
+                <a href="edit.html"><i class="fa fa-book"></i> 前台工作台</a>
+            </div>
+
+            <!-- 主区域 -->
+            <div class="adm-main">
+
+                <!-- 用户管理 -->
+                <div class="adm-panel" id="panel_user" style="display:block;">
+                    <h3><i class="fa fa-users"></i> 用户管理</h3>
+                    <div class="adm-toolbar">
+                        <input type="text" id="user_keyword" placeholder="按用户名/昵称搜索...">
+                        <button type="button" class="btn btn-primary" id="user_search">搜索</button>
+                        <span class="adm-page" id="user_total" style="margin-left:14px;"></span>
+                    </div>
+                    <table class="adm-table">
+                        <thead><tr>
+                            <th style="width:90px;">用户名</th><th style="width:120px;">昵称</th>
+                            <th style="width:80px;">角色</th><th style="width:80px;">状态</th>
+                            <th style="width:170px;">注册时间</th><th>操作</th>
+                        </tr></thead>
+                        <tbody id="user_rows"></tbody>
+                    </table>
+                    <div class="adm-page" id="user_page"></div>
+                </div>
+
+                <!-- 分享管理 -->
+                <div class="adm-panel" id="panel_share">
+                    <h3><i class="fa fa-share-alt"></i> 分享内容管理</h3>
+                    <p style="color:#8a949d;font-size:13px;">分享笔记发布后公开可见; 可对违规内容执行<strong>下架</strong>(前台不再展示)或<strong>删除</strong>。</p>
+                    <div class="adm-toolbar">
+                        <input type="text" id="share_keyword" placeholder="按分享标题搜索...">
+                        <button type="button" class="btn btn-primary" id="share_search">搜索</button>
+                        <span class="adm-page" id="share_total" style="margin-left:14px;"></span>
+                    </div>
+                    <table class="adm-table">
+                        <thead><tr>
+                            <th class="t-title">标题</th><th style="width:130px;">分享人</th>
+                            <th style="width:90px;">状态</th><th style="width:220px;">操作</th>
+                        </tr></thead>
+                        <tbody id="share_rows"></tbody>
+                    </table>
+                    <div class="adm-page" id="share_page"></div>
+                </div>
+
+                <!-- 活动管理 -->
+                <div class="adm-panel" id="panel_activity">
+                    <h3><i class="fa fa-calendar"></i> 活动管理</h3>
+                    <div class="adm-form" id="activity_form">
+                        <div class="f-row"><label>活动标题:</label><input type="text" id="act_title" maxlength="100" placeholder="如: Spring Boot 征文"></div>
+                        <div class="f-row"><label>活动介绍:</label><textarea id="act_body" placeholder="活动介绍与参赛要求..."></textarea></div>
+                        <div class="f-row"><label>结束时间:</label><input type="datetime-local" id="act_end_time"></div>
+                        <div class="hint">结束时间可留空, 表示长期有效</div>
+                        <div class="f-row" style="margin-left:90px;">
+                            <button type="button" class="btn btn-primary" id="act_save">发布活动</button>
+                            <button type="button" class="btn btn-default" id="act_cancel" style="display:none;">取消编辑</button>
+                        </div>
+                    </div>
+                    <table class="adm-table">
+                        <thead><tr>
+                            <th class="t-title">标题</th><th>活动介绍</th>
+                            <th style="width:170px;">结束时间</th><th style="width:180px;">操作</th>
+                        </tr></thead>
+                        <tbody id="activity_rows"></tbody>
+                    </table>
+                </div>
+            </div>
+        </div>
+
+        <script type="text/javascript" src="scripts/common/jquery.min.js"></script>
+        <script type="text/javascript" src="scripts/base.js?v=20260902-role"></script>
+        <script type="text/javascript" src="scripts/cookie_util.js"></script>
+        <script type="text/javascript" src="scripts/admin.js"></script>
+    </body>
+</html>

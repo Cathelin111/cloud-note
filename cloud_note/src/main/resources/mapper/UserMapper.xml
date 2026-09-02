@@ -5,20 +5,46 @@
 	<select id="findByName" parameterType="string" resultType="com.lcz.cloud_note.entity.User">
 		select * from cn_user where cn_user_name=#{name}
 	</select>
+	<select id="findById" parameterType="string" resultType="com.lcz.cloud_note.entity.User">
+		select * from cn_user where cn_user_id=#{userId}
+	</select>
 	<insert	id="save" parameterType="com.lcz.cloud_note.entity.User">
 		insert into 
-		cn_user(cn_user_id,cn_user_name,cn_user_password,cn_user_nick,cn_user_token) 
-		values(#{cn_user_id},#{cn_user_name},#{cn_user_password},#{cn_user_nick},#{cn_user_token})
+		cn_user(cn_user_id,cn_user_name,cn_user_password,cn_user_nick,cn_user_token,
+				cn_user_role,cn_user_status,cn_user_create_time) 
+		values(#{cn_user_id},#{cn_user_name},#{cn_user_password},#{cn_user_nick},#{cn_user_token},
+				#{cn_user_role},#{cn_user_status},#{cn_user_create_time})
 	</insert>
 	<update id="change" parameterType="com.lcz.cloud_note.entity.User">
 		update cn_user set cn_user_password=#{cn_user_password} where cn_user_id=#{cn_user_id}
 	</update>
+	
+	<!-- 后台: 分页查询普通用户(排除管理员, 支持用户名/昵称模糊搜索) -->
+	<select id="findAdminPage" parameterType="hashmap" resultType="com.lcz.cloud_note.entity.User">
+		select * from cn_user
+		where cn_user_role='user'
+		<if test="keyword!=null and keyword!=''">
+			and (cn_user_name like #{keyword}
+			     or COALESCE(cn_user_nick,'') like #{keyword})
+		</if>
+		order by cn_user_name
+		limit #{pageSize} offset #{begin}
+	</select>
+	<!-- 后台: 统计符合条件的普通用户数量 -->
+	<select id="countAdmin" parameterType="hashmap" resultType="int">
+		select count(*) from cn_user
+		where cn_user_role='user'
+		<if test="keyword!=null and keyword!=''">
+			and (cn_user_name like #{keyword}
+			     or COALESCE(cn_user_nick,'') like #{keyword})
+		</if>
+	</select>
+	<!-- 后台: 修改用户状态(normal/disabled) -->
+	<update id="updateStatus" parameterType="hashmap">
+		update cn_user set cn_user_status=#{status} where cn_user_id=#{userId}
+	</update>
+	<!-- 后台: 删除用户 -->
+	<delete id="deleteById" parameterType="string">
+		delete from cn_user where cn_user_id=#{userId}
+	</delete>
 </mapper>
-
-
-
-
-
-
-
-

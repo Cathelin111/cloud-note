@@ -1,13 +1,13 @@
-﻿<!DOCTYPE html>
+<!DOCTYPE html>
 <html>
 <head>
 <meta http-equiv="Content-Type" content="text/html; charset=utf-8" />
 <title>云笔记</title>
 <link rel="stylesheet" href="styles/login.css"/><!-- 样式css文件 -->
 <script type="text/javascript" 	src="scripts/common/jquery.min.js"></script> <!-- 引入jquery框架 -->
-<script type="text/javascript" src="scripts/base.js"></script> <!-- 引入项目的访问路径 -->
+<script type="text/javascript" src="scripts/base.js?v=20260902-role"></script> <!-- 引入项目的访问路径 -->
 <script type="text/javascript" src="scripts/cookie_util.js"></script><!-- 引入cookie -->
-<script type="text/javascript" src="scripts/login.js"></script><!-- 引入登录和注册的处理 -->
+<script type="text/javascript" src="scripts/login.js?v=20260902-role"></script><!-- 引入登录和注册的处理(游客/管理员入口) -->
 </head>
 	<body>
 		<div class="global">
@@ -37,6 +37,46 @@
 						<div>
 							<input type="button" name="" id="login" value='&nbsp登&nbsp录&nbsp' tabindex='3'/>
 							<input type="button" name="" id="sig_in" value='&nbsp注&nbsp册&nbsp' tabindex='4'/>
+						</div>
+					</dt>
+					<dt>
+						<!-- 游客入口 / 管理员入口 -->
+						<div class='letter' style='text-align:center;padding-top:6px;'>
+							<a href="javascript:void(0)" id='guest_enter' style='color:#fff;text-decoration:underline;font-size:14px;'>游客浏览</a>
+							<span style='color:#ccc;margin:0 10px;'>|</span>
+							<a href="javascript:void(0)" id='admin_enter' style='color:#fff;text-decoration:underline;font-size:14px;'>管理员登录</a>
+						</div>
+					</dt>
+				</dl>
+			</div>
+			
+			<!-----------------------------------分割线-------------------------------- -->
+			
+			<!-- 管理员登录页面（隐藏） -->
+			<div class="sig sig_out" tabindex='-1' id='gl' style='visibility:hidden;'>
+				<dl>
+					<dt>
+						<div class='header'>
+							<h3>管理员登录</h3>
+						</div>
+					</dt>
+					<dt></dt>
+					<dt>
+						<div class='letter'>
+							用户名:&nbsp;<input type="text" name="" id="admin_count" tabindex='11'/>
+							<span id="admin_count_span"></span>
+						</div>
+					</dt>
+					<dt>
+						<div class='letter'>
+							密&nbsp;&nbsp;&nbsp;码:&nbsp;<input type="password" name="" id="admin_password" tabindex='12'/>
+							<span id="admin_password_span"></span>
+						</div>
+					</dt>
+					<dt>
+						<div>
+							<input type="button" name="" id="admin_login" value='&nbsp登&nbsp录&nbsp' tabindex='13'/>
+							<input type="button" name="" id="admin_back" value='&nbsp返&nbsp回&nbsp' tabindex='14'/>
 						</div>
 					</dt>
 				</dl>
@@ -85,16 +125,34 @@
 							function get(e){
 								return document.getElementById(e);
 							}
+							//显示/隐藏面板公共切换
+							function showPanel(showId, hideIds){
+								for(var i=0;i<hideIds.length;i++){
+									get(hideIds[i]).className='sig sig_out';
+									get(hideIds[i]).style.visibility='hidden';
+								}
+								get(showId).style.visibility='visible';
+								if(showId=='dl'){
+									get(showId).className='log log_in';
+								}else{
+									get(showId).className='sig sig_in';
+								}
+							}
 							get('sig_in').onclick=function(){
-								get('dl').className='log log_out';
-								get('zc').className='sig sig_in';
+								showPanel('zc',['dl','gl']);
 							}
 							get('back').onclick=function(){
-								get('zc').className='sig sig_out';
-								get('dl').className='log log_in';
+								showPanel('dl',['zc','gl']);
+							}
+							//管理员登录切换
+							get('admin_enter').onclick=function(){
+								showPanel('gl',['dl','zc']);
+							}
+							get('admin_back').onclick=function(){
+								showPanel('dl',['gl','zc']);
 							}
 							window.onload=function(){
-								var t =setTimeout("get('zc').style.visibility='visible'",800);
+								var t =setTimeout("get('zc').style.visibility='visible';get('gl').style.visibility='visible';",800);
 								get('regist_username').onfocus=function(){
 									get('warning_1').style.display='none';
 								}

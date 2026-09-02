@@ -11,6 +11,12 @@ public class User implements Serializable {
 	private String cn_user_password;
 	private String cn_user_token;
 	private String cn_user_nick;
+	//角色: user=普通用户 admin=系统管理员
+	private String cn_user_role;
+	//状态: normal=正常 disabled=停用
+	private String cn_user_status;
+	//注册时间(毫秒时间戳)
+	private Long cn_user_create_time;
 	
 	//关联查询
 	private List<Book> books;
@@ -50,6 +56,24 @@ public class User implements Serializable {
 	}
 	public void setCn_user_nick(String cn_user_nick) {
 		this.cn_user_nick = cn_user_nick;
+	}
+	public String getCn_user_role() {
+		return cn_user_role;
+	}
+	public void setCn_user_role(String cn_user_role) {
+		this.cn_user_role = cn_user_role;
+	}
+	public String getCn_user_status() {
+		return cn_user_status;
+	}
+	public void setCn_user_status(String cn_user_status) {
+		this.cn_user_status = cn_user_status;
+	}
+	public Long getCn_user_create_time() {
+		return cn_user_create_time;
+	}
+	public void setCn_user_create_time(Long cn_user_create_time) {
+		this.cn_user_create_time = cn_user_create_time;
 	}
 	@Override
 	public String toString() {

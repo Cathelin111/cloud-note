@@ -17,9 +17,42 @@ function get_activity_list(){
 	getNoteActivitys(global_ac_id,1);
 }
 
+/**
+ * 游客/未登录拦截: 返回true表示当前为游客, 已弹出提示并即将跳转登录页
+ * 活动浏览对游客公开, 但"参加活动/顶/踩/收藏"等操作要求登录
+ */
+function guestPrompt(){
+	if(getCookie("userId")){
+		return false;
+	}
+	alert("该操作需要登录账号才能进行!\n游客可以浏览公开内容, 注册成为普通用户后即可参加活动、收藏与顶踩。");
+	setTimeout(function(){
+		window.location.href="log_in.html";
+	},1600);
+	return true;
+}
+
 $(function(){
-	//显示用户名
-	$(".profile-username").text(getCookie("userName"));
+	//显示用户名; 未登录(游客)时提供登录/注册入口
+	var userName=getCookie("userName");
+	var userNick=getCookie("userNick");
+	if(userName){
+		$(".profile-username").text(userNick||userName);
+		//绑定退出登录
+		$("#logout").click(function(){
+			delCookie("userName");
+			delCookie("userId");
+			delCookie("userNick");
+			delCookie("userRole");
+			window.location.href="activity.html";
+		});
+	}else{
+		//游客模式: 直接显示登录/注册链接
+		$(".profile-nav").html(
+			'<a href="log_in.html" style="color:#fff;line-height:58px;display:inline-block;padding:0 8px;" title="登录">游客? 登录</a>'+
+			'<a href="log_in.html" style="color:#9ad5cf;line-height:58px;display:inline-block;padding:0 8px;" title="注册账号">注册</a>'
+		);
+	}
 	
 	//关闭/取消弹窗
 	$(document).on("click", ".close,.cancle", function() {
@@ -35,7 +68,7 @@ $(function(){
 		getNoteActivitys(global_ac_id,page+1);
 	});
 	
-	//点击投稿笔记,加载详情
+	//点击投稿笔记,加载详情(游客可浏览)
 	$(document).on("click", "#action_part_1 li", function() {
 		$(this).siblings('li').children('a').removeClass('checked');
 		$(this).children('a').addClass('checked');
@@ -43,8 +76,11 @@ $(function(){
 		getNoteActivityDetail($(this).data('noteActivity').cn_note_activity_id);
 	});
 	
-	//点击参加活动按钮,弹出选择笔记对话框
+	//点击参加活动按钮,弹出选择笔记对话框(需登录)
 	$(document).on("click", "#join_action", function() {
+		if(guestPrompt()){
+			return;
+		}
 		$('#modalBasic_15,.opacity_bg').show();
 		$('#select_notebook ul').empty();
 		$('#select_note ul').empty();
@@ -73,21 +109,30 @@ $(function(){
 		createNoteActivity(noteId,global_ac_id,dom);
 	});
 	
-	//收藏投稿
+	//收藏投稿(需登录)
 	$(document).on('click', "#first_action .btn_like", function() {
+		if(guestPrompt()){
+			return;
+		}
 		var dom = $(this).parents("li");
 		var noteActivityId = dom.data("noteActivity").cn_note_activity_id;
 		likeActivityNote(noteActivityId, $(this));
 	});
 	
-	//顶投稿
+	//顶投稿(需登录)
 	$(document).on("click", "#first_action .btn_up", function() {
+		if(guestPrompt()){
+			return;
+		}
 		var dom = $(this).parents("li");
 		up(dom.data("noteActivity").cn_note_activity_id,$(this));
 	});
 	
-	//踩投稿
+	//踩投稿(需登录)
 	$(document).on("click", "#first_action .btn_down", function() {
+		if(guestPrompt()){
+			return;
+		}
 		var dom = $(this).parents("li");
 		down(dom.data("noteActivity").cn_note_activity_id,$(this));
 	});

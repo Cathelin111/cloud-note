@@ -28,6 +28,12 @@ public class UserServiceImpl implements UserService{
 			result.setMsg("用户名不存在");
 			return result;
 		}
+		//检测账号状态: disabled表示被管理员停用
+		if("disabled".equals(user.getCn_user_status())) {
+			result.setStatus(3);
+			result.setMsg("该账号已被管理员停用, 请联系系统管理员");
+			return result;
+		}
 		//检测密码
 		String md5Password=NoteUtil.md5(password);//对输入的密码进行加密，然后进行比较
 		if(!user.getCn_user_password().equals(md5Password)) {
@@ -66,6 +72,10 @@ public class UserServiceImpl implements UserService{
 		//设置主键id
 		String id = NoteUtil.createId();
 		user.setCn_user_id(id);
+		//注册用户默认为"普通用户(user)", 状态为"正常(normal)", 记录注册时间
+		user.setCn_user_role("user");
+		user.setCn_user_status("normal");
+		user.setCn_user_create_time(System.currentTimeMillis());
 		//执行保存操作
 		userDao.save(user);
 		//构建返回结果

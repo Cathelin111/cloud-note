@@ -14,19 +14,59 @@
 			#{cn_share_body},
 			#{cn_note_id})
 	</insert>
+	
+	<!-- 前台搜索: 只返回公开可见(normal)的分享, 并带出分享人昵称 -->
 	<select id="findLikeTitle" parameterType="String" resultType="com.lcz.cloud_note.entity.Share">
-		select * from cn_share where cn_share_title like #{title}
+		select s.cn_share_id, s.cn_share_title, s.cn_share_body, s.cn_note_id,
+		       u.cn_user_nick as cn_share_author
+		from cn_share s
+		left join cn_note n on n.cn_note_id = s.cn_note_id
+		left join cn_user u on u.cn_user_id = n.cn_user_id
+		where s.cn_share_status = 'normal' and s.cn_share_title like #{title}
+		order by s.cn_share_id
 	</select>
 	
 	<select id="findById" parameterType="String" resultType="com.lcz.cloud_note.entity.Share">
 		select * from cn_share where cn_share_id=#{shareId}
-	</select>	
+	</select>
+	
+	<!-- 后台: 分页查询全部分享(含已下架), 带分享人昵称 -->
+	<select id="findAdminPage" parameterType="hashmap" resultType="com.lcz.cloud_note.entity.Share">
+		select s.cn_share_id, s.cn_share_title, s.cn_share_body, s.cn_note_id, s.cn_share_status,
+		       u.cn_user_nick as cn_share_author
+		from cn_share s
+		left join cn_note n on n.cn_note_id = s.cn_note_id
+		left join cn_user u on u.cn_user_id = n.cn_user_id
+		<where>
+			<if test="keyword!=null and keyword!=''">
+				s.cn_share_title like #{keyword}
+			</if>
+		</where>
+		order by s.cn_share_id
+		limit #{pageSize} offset #{begin}
+	</select>
+	<!-- 后台: 统计分享总条数 -->
+	<select id="countAdmin" parameterType="hashmap" resultType="int">
+		select count(*) from cn_share s
+		<where>
+			<if test="keyword!=null and keyword!=''">
+				s.cn_share_title like #{keyword}
+			</if>
+		</where>
+	</select>
+	<!-- 后台: 修改分享状态(normal/disabled) -->
+	<update id="updateStatus" parameterType="hashmap">
+		update cn_share set cn_share_status=#{status} where cn_share_id=#{shareId}
+	</update>
+	<!-- 删除分享(按分享ID) -->
+	<delete id="deleteById" parameterType="string">
+		delete from cn_share where cn_share_id=#{shareId}
+	</delete>
+	<!-- 删除引用指定笔记列表的分享(删除用户时级联清理) -->
+	<delete id="deleteByNoteIds" parameterType="list">
+		delete from cn_share where cn_note_id in
+		<foreach collection="list" item="noteId" open="(" separator="," close=")">
+			#{noteId}
+		</foreach>
+	</delete>
 </mapper>
-
-
-
-
-
-
-
-

@@ -17,4 +17,14 @@ public interface ActivityDao {
 	public void saveNoteActivity(NoteActivity noteActivity);
 	//更新投稿(顶/踩)
 	public void updateNoteActivity(NoteActivity noteActivity);
+	//后台: 新建活动
+	public void saveActivity(Activity activity);
+	//后台: 修改活动
+	public int updateActivity(Activity activity);
+	//后台: 删除活动
+	public int deleteById(String activityId);
+	//后台: 删除某活动下的全部投稿
+	public int deleteNoteActivityByActivityId(String activityId);
+	//删除引用指定笔记列表的投稿(删除用户时级联清理)
+	public int deleteNoteActivityByNoteIds(List<String> noteIds);
 }

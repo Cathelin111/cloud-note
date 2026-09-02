@@ -42,7 +42,7 @@ public class ShareServiceImpl  implements ShareService{
 		result.setMsg("分享笔记成功");
 		return result;
 	}
-	//搜索功能
+	//搜索功能(仅公开分享; 被管理员下架的分享不再展示)
 	public NoteResult<List<Share>> searchNote(String keyword) {
 		String title="%"+keyword+"%";
 		//模糊查询
@@ -58,6 +58,17 @@ public class ShareServiceImpl  implements ShareService{
 	public NoteResult<Share> loadShareNote(String shareId) {
 		Share share = shareDao.findById(shareId);
 		NoteResult result = new NoteResult();
+		if(share==null) {
+			result.setStatus(1);
+			result.setMsg("分享不存在或已被删除");
+			return result;
+		}
+		//被下架的分享不允许游客/普通用户查看内容
+		if(!"normal".equals(share.getCn_share_status())) {
+			result.setStatus(2);
+			result.setMsg("该分享已被管理员下架");
+			return result;
+		}
 		result.setStatus(0);
 		result.setMsg("加载笔记成功");
 		result.setData(share);

@@ -86,6 +86,8 @@ CREATE TABLE `cn_note` (
 -- Records of cn_note
 -- ----------------------------
 INSERT INTO `cn_note` VALUES ('0e086e15000e4d3385afef193c18bb89', '623c1074d04641f78a04afc4ed64e684', '48595f52-b22c-4485-9244-f4004255b972', '1', '1', '测试建立的笔记', '', '1525688810279', '1525688810279');
+INSERT INTO `cn_note` VALUES ('3c9f2d1a7e004d1e9a2b5c8d7e6f5a4b', 'b9844bfbe5704048bbd9be8354a2a00d', '48595f52-b22c-4485-9244-f4004255b972', '1', '1', 'Spring MVC 快速入门', '<p>Spring MVC 基于 MVC 设计模式, 通过 DispatcherServlet 统一分发请求, 是 Java Web 开发的经典框架。</p>', '1525690000000', '1525690000000');
+INSERT INTO `cn_note` VALUES ('8a4b7c2d5e6f4a1b9c3d0e2f5a6b7c8d', 'b9844bfbe5704048bbd9be8354a2a00d', '48595f52-b22c-4485-9244-f4004255b972', '1', '1', 'MyBatis 动态 SQL 笔记', '<p>MyBatis 提供 if、foreach、where 等标签, 让我们可以在 XML 中灵活编写动态查询语句。</p>', '1525691000000', '1525691000000');
 
 -- ----------------------------
 -- Table structure for `cn_notebook`
@@ -193,13 +195,16 @@ CREATE TABLE `cn_share` (
   `cn_share_title` varchar(500) DEFAULT NULL COMMENT '共享标题',
   `cn_share_body` text COMMENT '共享内容',
   `cn_note_id` varchar(100) DEFAULT NULL COMMENT '笔记id',
+  `cn_share_status` varchar(20) DEFAULT 'normal' COMMENT '分享状态: normal=公开  disabled=已被管理员下架',
   PRIMARY KEY (`cn_share_id`)
 ) ENGINE=InnoDB DEFAULT CHARSET=utf8;
 
 -- ----------------------------
 -- Records of cn_share
 -- ----------------------------
-INSERT INTO `cn_share` VALUES ('b09fa6064e3a4cf3a144d1279f8717aa', '测试建立的笔记', '', '0e086e15000e4d3385afef193c18bb89');
+INSERT INTO `cn_share` VALUES ('b09fa6064e3a4cf3a144d1279f8717aa', '测试建立的笔记', '', '0e086e15000e4d3385afef193c18bb89', 'normal');
+INSERT INTO `cn_share` VALUES ('d1e2f3a4b5c64d7e8f9a0b1c2d3e4f5a', 'Spring MVC 快速入门', '<p>Spring MVC 基于 MVC 设计模式, 通过 DispatcherServlet 统一分发请求, 是 Java Web 开发的经典框架。</p>', '3c9f2d1a7e004d1e9a2b5c8d7e6f5a4b', 'normal');
+INSERT INTO `cn_share` VALUES ('e5d4c3b2a1f04e9d8c7b6a5f4e3d2c1b', 'MyBatis 动态 SQL 笔记', '<p>MyBatis 提供 if、foreach、where 等标签, 让我们可以在 XML 中灵活编写动态查询语句。</p>', '8a4b7c2d5e6f4a1b9c3d0e2f5a6b7c8d', 'normal');
 
 -- ----------------------------
 -- Table structure for `cn_user`
@@ -211,10 +216,14 @@ CREATE TABLE `cn_user` (
   `cn_user_password` varchar(100) DEFAULT NULL COMMENT '密码',
   `cn_user_token` varchar(100) DEFAULT NULL COMMENT '令牌',
   `cn_user_nick` varchar(100) DEFAULT NULL COMMENT '说明',
+  `cn_user_role` varchar(20) DEFAULT 'user' COMMENT '角色: user=普通用户 admin=系统管理员',
+  `cn_user_status` varchar(20) DEFAULT 'normal' COMMENT '状态: normal=正常 disabled=停用',
+  `cn_user_create_time` bigint(20) DEFAULT NULL COMMENT '注册时间(毫秒时间戳)',
   PRIMARY KEY (`cn_user_id`)
 ) ENGINE=InnoDB DEFAULT CHARSET=utf8;
 
 -- ----------------------------
 -- Records of cn_user
 -- ----------------------------
-INSERT INTO `cn_user` VALUES ('48595f52-b22c-4485-9244-f4004255b972', 'demo', '4QrcOUm6Wau+VuBX8g+IPg==', null, null);
+INSERT INTO `cn_user` VALUES ('a1d8c7f62b5d4e1f9c0e8a7b6c5d4e3f', 'admin', 'AZICOnu9cyUFFvBp3xi1AA==', null, '系统管理员', 'admin', 'normal', '1525688810279');
+INSERT INTO `cn_user` VALUES ('48595f52-b22c-4485-9244-f4004255b972', 'demo', '4QrcOUm6Wau+VuBX8g+IPg==', null, '演示用户', 'user', 'normal', '1525688810279');
