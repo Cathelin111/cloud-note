@@ -67,14 +67,25 @@ try {
     & $git commit -m $Message
     if ($LASTEXITCODE -ne 0) { throw "git commit 失败" }
 
-    # ---------- 6. 推送 ----------
+    # ---------- 6. 推送（若远程有他人改动则自动合并后重试） ----------
     Write-Host ""
     Write-Host ">> 推送到 GitHub (git push) ..." -ForegroundColor Green
     & $git push
     if ($LASTEXITCODE -ne 0) {
-        Write-Host "[错误] 推送失败！请检查网络或 SSH 密钥。" -ForegroundColor Red
-        Write-Host "       可尝试: git remote -v  查看远程地址" -ForegroundColor Yellow
-        exit 1
+        Write-Host "   推送被拒绝，可能远程有新改动，尝试自动同步 (pull --rebase) ..." -ForegroundColor Yellow
+        & $git pull --rebase origin main
+        if ($LASTEXITCODE -ne 0) {
+            Write-Host "[错误] 自动合并失败！可能存在文件冲突，请手动处理：" -ForegroundColor Red
+            Write-Host "       1. git status 查看冲突文件" -ForegroundColor Yellow
+            Write-Host "       2. 解决冲突后: git add -A && git commit && git push" -ForegroundColor Yellow
+            exit 1
+        }
+        Write-Host "   同步完成，重新推送 ..." -ForegroundColor Yellow
+        & $git push
+        if ($LASTEXITCODE -ne 0) {
+            Write-Host "[错误] 推送仍然失败！请检查网络或 SSH 密钥。" -ForegroundColor Red
+            exit 1
+        }
     }
 
     # ---------- 7. 完成 ----------
