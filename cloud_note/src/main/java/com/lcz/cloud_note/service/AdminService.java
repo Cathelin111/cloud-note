@@ -4,6 +4,7 @@ import java.util.List;
 import java.util.Map;
 
 import com.lcz.cloud_note.entity.Activity;
+import com.lcz.cloud_note.entity.User;
 import com.lcz.cloud_note.util.NoteResult;
 
 /**
@@ -16,6 +17,12 @@ public interface AdminService {
 	public NoteResult<Object> setUserStatus(String adminId, String userId, String status);
 	//删除用户(级联清理其笔记本/笔记/分享/投稿)
 	public NoteResult<Object> deleteUser(String adminId, String userId);
+	//把普通用户提升为管理员
+	public NoteResult<Object> setAdmin(String adminId, String targetId);
+	//直接新建一个管理员账号(用户名/密码/昵称)
+	public NoteResult<Object> addAdmin(String adminId, String name, String password, String nick);
+	//查询当前全部管理员账号
+	public NoteResult<List<User>> adminList(String adminId);
 	//分页查询分享内容(分享管理)
 	public NoteResult<Map<String,Object>> shareList(String adminId, String keyword, Integer page);
 	//下架/上架分享

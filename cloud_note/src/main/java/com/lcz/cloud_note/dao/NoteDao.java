@@ -1,13 +1,12 @@
 package com.lcz.cloud_note.dao;
 
 import java.util.List;
-import java.util.Map;
 
 import com.lcz.cloud_note.entity.Note;
 
 public interface NoteDao {
 	//根据点击的bookId，从而返回一个笔记本中的笔记
-	public List<Map> findByBookId(String bookId);
+	public List<Note> findByBookId(String bookId);
 	
 	//单击笔记,加载笔记相关信息
 	public Note findByNoteId(String noteId);

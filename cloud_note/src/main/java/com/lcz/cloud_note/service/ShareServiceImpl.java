@@ -1,6 +1,8 @@
 package com.lcz.cloud_note.service;
 
+import java.util.HashMap;
 import java.util.List;
+import java.util.Map;
 
 import javax.annotation.Resource;
 
@@ -16,6 +18,9 @@ import com.lcz.cloud_note.util.NoteUtil;
 @Service("shareService")//增加到spring容器里面
 @Transactional //spring事务
 public class ShareServiceImpl  implements ShareService{
+	//分享广场每页显示条数
+	private static final int PAGE_SIZE = 10;
+
 	@Resource
 	private ShareDao shareDao;
 	@Resource
@@ -52,6 +57,27 @@ public class ShareServiceImpl  implements ShareService{
 		result.setStatus(0);
 		result.setMsg("搜索成功");
 		result.setData(shares);
+		return result;
+	}
+	//分享广场搜索: 标题或正文命中 + 服务端分页(每页10条)
+	public NoteResult<Map<String,Object>> searchPage(String keyword, Integer page) {
+		NoteResult<Map<String,Object>> result = new NoteResult<Map<String,Object>>();
+		String kw = (keyword == null) ? "" : keyword.trim();
+		Map<String,Object> params = new HashMap<String,Object>();
+		params.put("keyword", "%" + kw + "%");
+		int total = shareDao.countByKeyword(params);
+		int p = (page == null || page < 1) ? 1 : page;
+		params.put("begin", (p - 1) * PAGE_SIZE);
+		params.put("pageSize", PAGE_SIZE);
+		List<Share> rows = shareDao.findPageByKeyword(params);
+		Map<String,Object> data = new HashMap<String,Object>();
+		data.put("total", total);
+		data.put("page", p);
+		data.put("size", PAGE_SIZE);
+		data.put("rows", rows);
+		result.setStatus(0);
+		result.setMsg("搜索成功");
+		result.setData(data);
 		return result;
 	}
 	//点击搜索后的收藏笔记，从而查看笔记信息

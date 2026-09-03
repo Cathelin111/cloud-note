@@ -1,6 +1,6 @@
 /**
- * guest.js 游客分享广场页面处理
- * 游客(未登录)可浏览公开分享笔记; 收藏等操作需要登录
+ * guest.js 分享广场页面处理(游客与登录用户共用)
+ * 功能: 搜索公开分享(标题/正文, 服务端分页), 查看详情, 收藏(需登录)
  */
 $(function(){
 	//顶部用户区
@@ -63,16 +63,14 @@ $(function(){
 			$('.opacity_bg').show();
 		});
 	}
-	//默认加载全部分享
+	//默认加载全部分享(第一页)
 	doSearch(1);
 });
 
 //搜索状态
-var g_shares=[];   //当前搜索结果缓存(单次搜索全部结果)
 var g_curPage=1;   //当前页
-var g_pageSize=8;  //每页条数
-var g_total=0;     //结果总数
-var g_keyword="";  //当前关键字
+var g_total=0;      //命中总数
+var g_pages=0;      //总页数
 
 //顶部用户区: 已登录显示昵称/入口, 未登录显示游客提示
 function renderUserArea(){
@@ -87,7 +85,7 @@ function renderUserArea(){
 		}
 		html+='<a href="javascript:void(0)" id="gs_logout"><i class="fa fa-sign-out"></i> 退出</a>';
 		$("#gs_user_area").html(html);
-		$("#gs_fav_tip").html("收藏后将保存到您的\"收藏笔记本\"中");
+		$("#gs_fav_tip").html("收藏后将保存到您的\"收藏笔记本\"中, 可随时在我的笔记里查看");
 		$("#gs_logout").click(function(){
 			delCookie("userName");delCookie("userId");delCookie("userNick");delCookie("userRole");
 			window.location.href="guest.html";
@@ -100,44 +98,46 @@ function renderUserArea(){
 	}
 }
 
-//按关键字搜索公开分享(第page页)
+//搜索公开分享(第page页): 标题或正文命中, 服务端分页
 function doSearch(page){
-	var keyword=$("#gs_keyword").val().trim();
 	if(page<1){page=1;}
+	var keyword=$("#gs_keyword").val().trim();
+	$("#gs_list").html('<div class="gs-empty"><i class="fa fa-spinner fa-spin"></i> 搜索中...</div>');
+	$("#gs_page").html("");
 	$.ajax({
-		url:base_path+"/share/search.do",
+		url:base_path+"/share/searchPage.do",
 		type:"post",
-		data:{"keyword":keyword},
+		data:{"keyword":keyword,"page":page},
 		dataType:"json",
 		success:function(result){
 			if(result.status==0){
-				g_shares=result.data||[];
-				g_keyword=keyword;
-				g_total=g_shares.length;
-				g_curPage=1;
-				//多关键字搜索时重新展示第一页
-				g_curPage=(page>1&&page<=Math.ceil(g_total/g_pageSize))?page:1;
-				renderShareList();
+				var d=result.data;
+				g_total=d.total||0;
+				g_curPage=d.page||1;
+				g_pages=Math.ceil(g_total/(d.size||10));
+				renderShareList(d.rows||[],keyword);
 			}else{
+				$("#gs_list").html('<div class="gs-empty">搜索失败: '+(result.msg||"请稍后重试")+'</div>');
 				alert(result.msg||"搜索失败");
 			}
 		},
-		error:function(){ alert("搜索失败, 请稍后重试"); }
+		error:function(){
+			$("#gs_list").html('<div class="gs-empty">搜索失败, 请检查网络后重试</div>');
+			alert("搜索失败, 请稍后重试");
+		}
 	});
 }
 
 //渲染当前页分享列表
-function renderShareList(){
+function renderShareList(rows,keyword){
 	$("#gs_list").empty();
-	if(g_total==0){
-		$("#gs_list").html('<div class="gs-empty">没有找到公开分享的笔记<br/><small>换个关键字试试, 或<a href="log_in.html">登录后</a>自己分享笔记</small></div>');
+	if(!rows || rows.length==0){
+		$("#gs_list").html('<div class="gs-empty">没有找到匹配的分享笔记<br/><small>'+(keyword?'换个关键字试试, 或':'或')+'<a href="log_in.html">登录</a>后自己分享笔记</small></div>');
 		$("#gs_page").html("");
 		return;
 	}
-	var begin=(g_curPage-1)*g_pageSize;
-	var end=Math.min(begin+g_pageSize,g_total);
-	for(var i=begin;i<end;i++){
-		var s=g_shares[i];
+	for(var i=0;i<rows.length;i++){
+		var s=rows[i];
 		var author=s.cn_share_author||"佚名";
 		var excerpt=plainText(s.cn_share_body);
 		excerpt=excerpt.length>56?excerpt.substring(0,56)+"...":excerpt;
@@ -148,15 +148,21 @@ function renderShareList(){
 			+'</div>';
 		$("#gs_list").append(li);
 	}
-	var pageCount=Math.ceil(g_total/g_pageSize);
-	var pageHtml='<button type="button" class="btn btn-default btn-xs" id="gs_prev"'+(g_curPage<=1?' disabled':'')+'>上一页</button>';
-	pageHtml+=' 第 '+g_curPage+'/'+pageCount+' 页, 共 '+g_total+' 条 ';
-	pageHtml+='<button type="button" class="btn btn-default btn-xs" id="gs_next"'+(g_curPage>=pageCount?' disabled':'')+'>下一页</button>';
-	$("#gs_page").html(pageHtml);
+	//分页信息
+	if(g_pages>1){
+		var pageHtml='<button type="button" class="btn btn-default btn-xs" id="gs_prev"'+(g_curPage<=1?' disabled':'')+'>上一页</button>';
+		pageHtml+=' 第 '+g_curPage+' / '+g_pages+' 页, 共 '+g_total+' 条 ';
+		pageHtml+='<button type="button" class="btn btn-default btn-xs" id="gs_next"'+(g_curPage>=g_pages?' disabled':'')+'>下一页</button>';
+		$("#gs_page").html(pageHtml);
+	}else{
+		$("#gs_page").html('共 '+g_total+' 条分享');
+	}
 }
 
 //加载分享详情
 function loadShareDetail(shareId){
+	$("#gs_detail").html('<div class="gs-empty"><i class="fa fa-spinner fa-spin"></i> 加载中...</div>');
+	$("#gs_actions").hide();
 	$.ajax({
 		url:base_path+"/note/load_share.do",
 		type:"post",
@@ -173,9 +179,15 @@ function loadShareDetail(shareId){
 				$("#gs_favorite").html('<i class="fa fa-star-o"></i> 收藏该分享');
 				$("#gs_favorite").removeAttr("disabled");
 				$("#gs_favorite").attr("data-shareId",shareId);
+				if(getCookie("userNick")||getCookie("userName")){
+					$("#gs_fav_tip").text("收藏后将保存到您的\"收藏笔记本\"中");
+				}else{
+					$("#gs_fav_tip").text("登录后可将分享收藏到自己的笔记中");
+				}
 				$("#gs_actions").show();
 			}else{
 				alert(result.msg||"该分享暂时无法查看");
+				$("#gs_detail").html('<div class="gs-empty">'+(result.msg||"该分享暂时无法查看")+'</div>');
 				$("#gs_actions").hide();
 			}
 		},

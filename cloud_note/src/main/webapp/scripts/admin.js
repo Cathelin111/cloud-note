@@ -41,6 +41,7 @@ $(function(){
 		var panel=$(this).attr("data-panel");
 		$("#panel_"+panel).show();
 		if(panel=="user"){loadUsers(1);}
+		else if(panel=="admins"){loadAdmins();}
 		else if(panel=="share"){loadShares(1);}
 		else if(panel=="activity"){loadActivities();}
 	});
@@ -67,6 +68,32 @@ $(function(){
 		adminPost("user/delete.do",{targetId:targetId},function(result){
 			alert(result.msg);
 			if(result.status==0){loadUsers(curUserPage);}
+		});
+	});
+	//用户行操作: 设为管理员
+	$("#user_rows").on("click",".act-promote",function(){
+		var targetId=$(this).attr("data-id");
+		var name=$(this).attr("data-name");
+		if(!confirm("确认将用户 \""+name+"\" 提升为系统管理员吗?\n提升后他可用登录页的\"管理员登录\"入口进入后台。")){return;}
+		adminPost("user/setAdmin.do",{targetId:targetId},function(result){
+			alert(result.msg);
+			if(result.status==0){loadUsers(curUserPage);}
+		});
+	});
+	//管理员管理: 直接新建管理员账号
+	$("#adm_create").click(function(){
+		var name=$("#adm_name").val().trim();
+		var password=$("#adm_password").val().trim();
+		var nick=$("#adm_nick").val().trim();
+		if(!name){alert("用户名不能为空!");return;}
+		if(password.length<6){alert("密码长度不能小于6位!");return;}
+		if(!confirm("确认创建管理员账号 \""+name+"\" 吗?")){return;}
+		adminPost("user/addAdmin.do",{name:name,password:password,nick:nick},function(result){
+			alert(result.msg);
+			if(result.status==0){
+				$("#adm_name").val("");$("#adm_password").val("");$("#adm_nick").val("");
+				loadAdmins();
+			}
 		});
 	});
 	//分享行操作: 下架/上架/删除
@@ -168,7 +195,8 @@ function loadUsers(page){
 			}else{
 				actHtml+='<button type="button" class="btn btn-default btn-xs act-status" data-id="'+u.cn_user_id+'" data-status="disabled">停用</button>';
 			}
-			actHtml+='<button type="button" class="btn btn-default btn-xs act-delete" data-id="'+u.cn_user_id+'" data-name="'+u.cn_user_name+'">删除</button></span>';
+			actHtml+='<button type="button" class="btn btn-default btn-xs act-delete" data-id="'+u.cn_user_id+'" data-name="'+u.cn_user_name+'">删除</button>';
+			actHtml+='<button type="button" class="btn btn-default btn-xs act-promote" data-id="'+u.cn_user_id+'" data-name="'+u.cn_user_name+'" title="提升为系统管理员"><i class="fa fa-shield"></i> 设为管理员</button></span>';
 			html+='<tr>'
 				+'<td>'+escapeHtml(u.cn_user_name)+'</td>'
 				+'<td>'+escapeHtml(u.cn_user_nick||"-")+'</td>'
@@ -180,6 +208,33 @@ function loadUsers(page){
 		}
 		$("#user_rows").html(html);
 		renderPage("user_page",data.page,data.total,"loadUsers");
+	});
+}
+
+//================== 管理员管理 ==================
+function loadAdmins(){
+	adminPost("user/admins.do",{},function(result){
+		if(result.status!=0){alert(result.msg);return;}
+		var rows=result.data||[];
+		var html="";
+		if(rows.length==0){
+			html='<tr><td colspan="5" class="adm-empty">暂无管理员账号</td></tr>';
+		}
+		for(var i=0;i<rows.length;i++){
+			var a=rows[i];
+			var me=(getCookie("userId")==a.cn_user_id)?' <span class="adm-tag info">当前登录</span>':'';
+			var statusHtml=a.cn_user_status=="disabled"
+				?'<span class="adm-tag warn">已停用</span>'
+				:'<span class="adm-tag ok">正常</span>';
+			html+='<tr>'
+				+'<td>'+escapeHtml(a.cn_user_name)+me+'</td>'
+				+'<td>'+escapeHtml(a.cn_user_nick||"-")+'</td>'
+				+'<td>'+statusHtml+'</td>'
+				+'<td class="t-time">'+formatTime(a.cn_user_create_time)+'</td>'
+				+'<td><span class="adm-tag info">系统管理员</span></td>'
+				+'</tr>';
+		}
+		$("#admin_rows").html(html);
 	});
 }
 

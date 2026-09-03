@@ -82,6 +82,11 @@ function loadNote(){
 				$("#input_note_title").val(title);
 				//设置笔记内容
 				um.setContent(body);
+				//若处于回收站/收藏/活动预览面板, 同步填充右侧预览区
+				$("#noput_note_title").html(title);
+				$("#share_meta").html("");
+				$("#share_body").html(body);
+				$("#share_actions").hide();
 			}
 		},
 		error:function(){
@@ -193,71 +198,131 @@ function shareNotes(){
 	});
 };
 
-//分页加载搜索分享的笔记
-//发送ajax请求
+//当前正在查看的分享ID(供"收藏该分享"按钮使用)
+var g_viewShareId=null;
+
+//分页加载搜索分享的笔记(标题或正文命中, 服务端分页, 每页10条)
 function searchSharePage(keyword,page){
+	//新搜索时清空列表
+	if(page==1){
+		$("#pc_part_6 ul").empty();
+		$("#more_note").hide();
+	}
 	$.ajax({
-		url:base_path+"/share/search.do",
+		url:base_path+"/share/searchPage.do",
 		type:"post",
 		data:{"keyword":keyword,"page":page},
 		dataType:"json",
 		success:function(result){
 			if(result.status==0){
-				//获取服务器返回的搜索结果
-				var shares=result.data;
+				var d=result.data;
+				var rows=d.rows||[];
+				var total=d.total||0;
+				var size=d.size||10;
+				var curPage=d.page||1;
+				//空结果提示
+				if(page==1 && rows.length==0){
+					$("#pc_part_6 ul").append('<li class="online"><a><i class="fa fa-inbox" title="empty" rel="tooltip-bottom"></i> 未找到匹配的分享笔记</a></li>');
+				}
 				//循环解析生成列表li元素
-				 //循环解析生成列表li元素
-				 for(var i=0;i<shares.length;i++){
-					 var shareId = shares[i].cn_share_id;//分享ID
-					 var shareTitle =shares[i].cn_share_title; //分享标题
-					 //生成一个li
-					 var sli = "";
-					 sli+='<li class="online">';
-					 sli+='	<a>';
-					 sli+='		<i class="fa fa-file-text-o" title="online" rel="tooltip-bottom"></i>';
-					 sli+= shareTitle;
-					 sli+='		<button type="button" class="btn btn-default btn-xs btn_position btn_slide_down"><i class="fa fa-star"></i></button>';
-					 sli+='	</a>';
-					 sli+='</li>';
-					 var $li = $(sli);
-				     $li.data("shareId",shareId);
-					 //添加到搜索结果ul中
-					 $("#pc_part_6 ul").append($li);
-				 }
+				for(var i=0;i<rows.length;i++){
+					var share=rows[i];
+					var shareId=share.cn_share_id;//分享ID
+					var shareTitle=htmlEsc(share.cn_share_title); //分享标题
+					var author=htmlEsc(share.cn_share_author||"佚名");//分享人
+					var sli = "";
+					sli+='<li class="online">';
+					sli+='	<a>';
+					sli+='		<i class="fa fa-file-text-o" title="online" rel="tooltip-bottom"></i>';
+					sli+='		<span style="display:block;">'+shareTitle+'</span>';
+					sli+='		<small style="display:block;color:#98a2ab;">分享者: '+author+'</small>';
+					sli+='		<button type="button" class="btn btn-default btn-xs btn_position btn_like" title="收藏"><i class="fa fa-star-o"></i></button>';
+					sli+='	</a>';
+					sli+='</li>';
+					var $li = $(sli);
+					$li.data("shareId",shareId);
+					//添加到搜索结果ul中
+					$("#pc_part_6 ul").append($li);
+				}
+				//还有下一页时显示"更多", 否则隐藏
+				if(total>curPage*size){
+					$("#more_note").show();
+				}else{
+					$("#more_note").hide();
+				}
+			}else{
+				if(page==1){
+					$("#pc_part_6 ul").append('<li class="online"><a>搜索失败: '+htmlEsc(result.msg)+'</a></li>');
+				}
 			}
 		},
 		error:function(){
-			alert("搜索失败");
+			if(page==1){
+				$("#pc_part_6 ul").append('<li class="online"><a><i class="fa fa-exclamation-circle" rel="tooltip-bottom"></i> 搜索失败, 请稍后重试</a></li>');
+			}
 		}
 	});
-};
-//查看搜索结果列表的笔记信息
+}
+//查看搜索结果列表的笔记信息(分享详情)
 function load_share(){
 	 //获取请求参数
 	 var shareId = $(this).data("shareId");
-	 //发送Ajax请求
-	 $.ajax({
+	 if(!shareId){return;}
+	 loadShareById(shareId);
+ };
+//加载分享详情并切换到预览面板
+function loadShareById(shareId){
+	$("#noput_note_title").html("加载中...");
+	$("#share_body").html("");
+	$("#share_meta").html("");
+	$.ajax({
 		 url:base_path+"/note/load_share.do",
 		 type:"post",
 		 data:{"shareId":shareId},
 		 dataType:"json",
 		 success:function(result){
 			 if(result.status==0){
-				 var title = result.data.cn_share_title;//获取分享标题
-				 var body =	result.data.cn_share_body; //获取分享内容
-				 //设置标题和内容
+				 var share=result.data;
+				 g_viewShareId=shareId;
+				 var title=htmlEsc(share.cn_share_title);//分享标题
+				 var author=htmlEsc(share.cn_share_author||"佚名");//分享人
+				 var body=share.cn_share_body||"";//分享内容(富文本HTML)
+				 //设置标题、作者与内容
 				 $("#noput_note_title").html(title);
-				 $("#noput_note_title").next().html(body);
-				 //切换显示
+				 $("#share_meta").html('分享者: '+author);
+				 $("#share_body").html(body);
+				 //重置收藏按钮状态
+				 $("#share_like_btn").html('<i class="fa fa-star-o"></i> 收藏该分享');
+				 $("#share_like_btn").removeAttr("disabled");
+				 $("#share_like_tip").text('收藏后可在"收藏笔记本"中查看');
+				 //切换显示: 隐藏编辑器, 显示分享详情
 				 $("#pc_part_3").hide();
 				 $("#pc_part_5").show();
+			 }else{
+				 //分享被下架或不存在
+				 alert(result.msg||"该分享暂时无法查看");
+				 if(result.status==2){
+				 	//下架的分享从列表中移除
+				 	$('#pc_part_6 li').filter(function(){return $(this).data("shareId")==shareId;}).remove();
+				 }
 			 }
 		 },
 		 error:function(){
-			 alert("加载笔记信息异常");
+			 alert("加载分享内容异常");
 		 }
 	 });
- };
+ }
+//关闭分享详情, 返回笔记编辑区
+function closeShareView(){
+	g_viewShareId=null;
+	$("#pc_part_5").hide();
+	$("#pc_part_3").show();
+}
+//分享标题/作者HTML转义
+function htmlEsc(str){
+	if(str==null){return "";}
+	return String(str).replace(/&/g,"&amp;").replace(/</g,"&lt;").replace(/>/g,"&gt;").replace(/"/g,"&quot;");
+}
  
 //删除笔记
  function deleteNote(){
@@ -424,11 +489,16 @@ function unlikeNote(){
 	});
 }
 
-//收藏分享的笔记(搜索结果中的星标按钮)
-function likeShareNote(shareId, dom){
+//收藏分享的笔记(搜索结果中的星标按钮 / 分享详情按钮)
+//okCallback: 收藏成功后的界面更新回调(可选)
+function likeShareNote(shareId, dom, okCallback){
 	var userId=getCookie("userId");
 	if(userId==null){
 		window.location.href="log_in.html";
+		return;
+	}
+	if(shareId==null){
+		alert("分享不存在, 无法收藏");
 		return;
 	}
 	$.ajax({
@@ -438,6 +508,7 @@ function likeShareNote(shareId, dom){
 		dataType:"json",
 		success:function(result){
 			if(result.status==0){
+				if(okCallback){okCallback();}
 				alert(result.msg);
 			}else{
 				alert(result.msg);

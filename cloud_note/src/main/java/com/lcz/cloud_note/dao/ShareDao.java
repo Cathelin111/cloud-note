@@ -10,6 +10,10 @@ public interface ShareDao {
 	public void share(Share share);
 	//搜索功能(仅返回公开可见normal状态的分享, 带分享人昵称)
 	public List<Share> findLikeTitle(String title);
+	//搜索公开分享(标题或正文命中, 分页, 带分享人昵称)
+	public List<Share> findPageByKeyword(Map<String,Object> params);
+	//统计标题或正文命中的公开分享总数
+	public int countByKeyword(Map<String,Object> params);
 	//按分享ID查询分享
 	public Share findById(String shareId);
 	//后台: 分页查询全部分享(含已下架, 带分享人昵称)

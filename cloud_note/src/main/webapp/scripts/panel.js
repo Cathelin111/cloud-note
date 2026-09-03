@@ -85,10 +85,17 @@ $(function(){
 	});
 	
 	//--------- 搜索结果中收藏分享笔记 ----------
-	$(document).on("click", "#pc_part_6 .btn_like", function(){
+	$(document).on("click", "#pc_part_6 .btn_like", function(event){
+		event.stopPropagation();//阻止冒泡, 避免触发查看详情
 		var $li=$(this).parents("li");
 		var shareId=$li.data("shareId");
-		likeShareNote(shareId, $(this));
+		var $btn=$(this);
+		likeShareNote(shareId, $btn, function(){
+			//收藏成功: 星标置亮并禁止重复点击
+			$btn.html('<i class="fa fa-star"></i>');
+			$btn.attr("disabled","disabled");
+			$btn.attr("title","已收藏");
+		});
 	});
 	
 	//--------- 笔记本重命名/删除 ----------

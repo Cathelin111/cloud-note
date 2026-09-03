@@ -2,7 +2,6 @@ package com.lcz.cloud_note.service;
 
 import java.sql.Timestamp;
 import java.util.List;
-import java.util.Map;
 
 import javax.annotation.Resource;
 
@@ -33,11 +32,11 @@ public class NoteServiceImpl implements NoteService {
 	@Resource
 	private NoteBookTypeDao noteBookTypeDao;
 	
-	public NoteResult<List<Map>> loadBookNotes(String bookId) {
+	public NoteResult<List<Note>> loadBookNotes(String bookId) {
 		//返回数据集合
-		List<Map> list = noteDao.findByBookId(bookId);
+		List<Note> list = noteDao.findByBookId(bookId);
 		//构建result
-		NoteResult<List<Map>> result=new NoteResult<List<Map>>();
+		NoteResult<List<Note>> result=new NoteResult<List<Note>>();
 		result.setStatus(0);
 		result.setMsg("加载笔记成功");
 		result.setData(list);
@@ -236,9 +235,9 @@ public class NoteServiceImpl implements NoteService {
 	}
 	
 	//查询笔记本中的笔记(活动投稿时选择笔记用)
-	public NoteResult<List<Map>> findNotesByBookId(String bookId) {
-		List<Map> list = noteDao.findByBookId(bookId);
-		NoteResult<List<Map>> result = new NoteResult<List<Map>>();
+	public NoteResult<List<Note>> findNotesByBookId(String bookId) {
+		List<Note> list = noteDao.findByBookId(bookId);
+		NoteResult<List<Note>> result = new NoteResult<List<Note>>();
 		result.setStatus(0);
 		result.setMsg("加载笔记成功");
 		result.setData(list);

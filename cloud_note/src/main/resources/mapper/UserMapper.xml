@@ -43,6 +43,14 @@
 	<update id="updateStatus" parameterType="hashmap">
 		update cn_user set cn_user_status=#{status} where cn_user_id=#{userId}
 	</update>
+	<!-- 后台: 修改用户角色(user/admin) -->
+	<update id="updateRole" parameterType="hashmap">
+		update cn_user set cn_user_role=#{role} where cn_user_id=#{userId}
+	</update>
+	<!-- 后台: 查询全部管理员账号 -->
+	<select id="findAdmins" resultType="com.lcz.cloud_note.entity.User">
+		select * from cn_user where cn_user_role='admin' order by cn_user_name
+	</select>
 	<!-- 后台: 删除用户 -->
 	<delete id="deleteById" parameterType="string">
 		delete from cn_user where cn_user_id=#{userId}

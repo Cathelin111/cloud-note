@@ -10,6 +10,7 @@ import org.springframework.web.bind.annotation.RequestMapping;
 import org.springframework.web.bind.annotation.ResponseBody;
 
 import com.lcz.cloud_note.entity.Activity;
+import com.lcz.cloud_note.entity.User;
 import com.lcz.cloud_note.service.AdminService;
 import com.lcz.cloud_note.util.NoteResult;
 
@@ -40,6 +41,24 @@ public class AdminController {
 	@ResponseBody
 	public NoteResult<Object> deleteUser(String userId, String targetId){
 		return adminService.deleteUser(userId, targetId);
+	}
+	//用户管理: 把普通用户提升为管理员
+	@RequestMapping("/user/setAdmin.do")
+	@ResponseBody
+	public NoteResult<Object> setAdmin(String userId, String targetId){
+		return adminService.setAdmin(userId, targetId);
+	}
+	//管理员管理: 直接新建管理员账号
+	@RequestMapping("/user/addAdmin.do")
+	@ResponseBody
+	public NoteResult<Object> addAdmin(String userId, String name, String password, String nick){
+		return adminService.addAdmin(userId, name, password, nick);
+	}
+	//管理员管理: 查询全部管理员账号
+	@RequestMapping("/user/admins.do")
+	@ResponseBody
+	public NoteResult<List<User>> admins(String userId){
+		return adminService.adminList(userId);
 	}
 
 	//分享管理: 分页查询分享内容

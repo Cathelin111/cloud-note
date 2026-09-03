@@ -26,6 +26,27 @@
 		order by s.cn_share_id
 	</select>
 	
+	<!-- 前台搜索(分页): 标题或正文命中, 仅公开可见, 带分享人昵称 -->
+	<select id="findPageByKeyword" parameterType="hashmap" resultType="com.lcz.cloud_note.entity.Share">
+		select s.cn_share_id, s.cn_share_title, s.cn_share_body, s.cn_note_id,
+		       u.cn_user_nick as cn_share_author
+		from cn_share s
+		left join cn_note n on n.cn_note_id = s.cn_note_id
+		left join cn_user u on u.cn_user_id = n.cn_user_id
+		where s.cn_share_status = 'normal'
+		  and (s.cn_share_title like #{keyword}
+		       or COALESCE(s.cn_share_body,'') like #{keyword})
+		order by s.cn_share_id
+		limit #{pageSize} offset #{begin}
+	</select>
+	<!-- 前台搜索: 统计标题或正文命中的公开分享总数 -->
+	<select id="countByKeyword" parameterType="hashmap" resultType="int">
+		select count(*) from cn_share
+		where cn_share_status = 'normal'
+		  and (cn_share_title like #{keyword}
+		       or COALESCE(cn_share_body,'') like #{keyword})
+	</select>
+	
 	<select id="findById" parameterType="String" resultType="com.lcz.cloud_note.entity.Share">
 		select * from cn_share where cn_share_id=#{shareId}
 	</select>

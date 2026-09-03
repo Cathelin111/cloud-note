@@ -62,6 +62,7 @@
             <!-- 左侧菜单 -->
             <div class="adm-menu">
                 <a class="active" data-panel="user"><i class="fa fa-users"></i> 用户管理</a>
+                <a data-panel="admins"><i class="fa fa-shield"></i> 管理员管理</a>
                 <a data-panel="share"><i class="fa fa-share-alt"></i> 分享管理</a>
                 <a data-panel="activity"><i class="fa fa-calendar"></i> 活动管理</a>
                 <a href="edit.html"><i class="fa fa-book"></i> 前台工作台</a>
@@ -87,6 +88,27 @@
                         <tbody id="user_rows"></tbody>
                     </table>
                     <div class="adm-page" id="user_page"></div>
+                </div>
+
+                <!-- 管理员管理 -->
+                <div class="adm-panel" id="panel_admins">
+                    <h3><i class="fa fa-shield"></i> 管理员管理</h3>
+                    <div class="adm-form" id="adm_create_form">
+                        <div class="f-row"><label>用户名:</label><input type="text" id="adm_name" maxlength="50" placeholder="新管理员登录账号"></div>
+                        <div class="f-row"><label>密码:</label><input type="password" id="adm_password" placeholder="至少6位"></div>
+                        <div class="f-row"><label>昵称:</label><input type="text" id="adm_nick" maxlength="50" placeholder="选填, 默认管理员"></div>
+                        <div class="f-row" style="margin-left:90px;">
+                            <button type="button" class="btn btn-primary" id="adm_create"><i class="fa fa-user-plus"></i> 新建管理员</button>
+                        </div>
+                    </div>
+                    <p style="color:#8a949d;font-size:13px;">提示：要把<b>已注册的普通用户</b>提升为管理员，请到「用户管理」里点该用户行的<b>设为管理员</b>；新建/提升的管理员都用登录页的<b>「管理员登录」</b>入口进入后台。</p>
+                    <table class="adm-table">
+                        <thead><tr>
+                            <th style="width:120px;">用户名</th><th style="width:160px;">昵称</th>
+                            <th style="width:80px;">状态</th><th style="width:170px;">注册时间</th><th>角色</th>
+                        </tr></thead>
+                        <tbody id="admin_rows"></tbody>
+                    </table>
                 </div>
 
                 <!-- 分享管理 -->
@@ -135,6 +157,6 @@
         <script type="text/javascript" src="scripts/common/jquery.min.js"></script>
         <script type="text/javascript" src="scripts/base.js?v=20260902-role"></script>
         <script type="text/javascript" src="scripts/cookie_util.js"></script>
-        <script type="text/javascript" src="scripts/admin.js"></script>
+        <script type="text/javascript" src="scripts/admin.js?v=20260903-admin"></script>
     </body>
 </html>

@@ -24,9 +24,9 @@
 		<script type="text/javascript" src="scripts/base.js?v=20260902-role"></script> <!-- 引入项目的访问路径 -->
 		<script type="text/javascript" src="scripts/cookie_util.js"></script><!-- 引入cookie -->
 		<script type="text/javascript" src="scripts/notebook.js"></script> <!-- 引入notebook笔记本处理功能 -->
-		<script type="text/javascript" src="scripts/note.js"></script><!-- 引入note笔记的处理功能 -->
+		<script type="text/javascript" src="scripts/note.js?v=20260903-share"></script><!-- 引入note笔记的处理功能 -->
 		<script type="text/javascript" src="scripts/alert.js"></script><!-- 引入弹出对话框的处理功能 -->
-		<script type="text/javascript" src="scripts/panel.js"></script><!-- 引入回收站/收藏/活动面板处理功能 -->
+		<script type="text/javascript" src="scripts/panel.js?v=20260903-share"></script><!-- 引入回收站/收藏/活动面板处理功能 -->
 		<script type="text/javascript">
 		 var page = 1;//要搜索第几页
 		 var keyword = "";//搜索关键字条件
@@ -95,8 +95,21 @@
 			 		 //发送Ajax请求加载数据
 			 		 searchSharePage(keyword,page);
 			 	 });
-				 //查看搜索结果列表的笔记信息
-			 	$("#pc_part_6 ul").on("click","li",load_share);
+				 //查看搜索结果列表的笔记信息(点击条目本身; 点内部按钮不触发)
+			 	$("#pc_part_6 ul").on("click","li",function(event){
+			 		if($(event.target).closest("button").length>0){return;}//收藏等按钮点击不打开详情
+			 		load_share.call(this);
+			 	});
+			 	//收藏当前查看的分享详情
+			 	$("#share_like_btn").click(function(){
+			 		if(!g_viewShareId){return;}
+			 		likeShareNote(g_viewShareId,this,function(){
+			 			$("#share_like_btn").html('<i class="fa fa-star"></i> 已收藏').attr("disabled","disabled");
+			 			$("#share_like_tip").text('已收藏到"收藏笔记本", 可点击左侧五角星查看');
+			 		});
+			 	});
+			 	//关闭分享详情, 返回笔记编辑
+			 	$("#share_close_btn").click(closeShareView);
 				 
 			 	 //笔记删除
 			 	 $("#note_ul").on("click",".btn_delete",alertDeleteNoteWindow);//功能在alert.js中
@@ -111,11 +124,20 @@
 			 	 //取用户名
 			 	 var userName=getCookie("userName");
 			 	 $("#profile-username").html(userName);
+			 	 //系统管理员: 显示"后台管理"直达入口(顶栏按钮+头像下拉菜单)
+			 	 //兼容旧Cookie(无userRole时按管理员账号名兜底)
+			 	 var userRole=getCookie("userRole")||"";
+			 	 if(userRole=="admin"||(userRole==""&&userName=="admin")){
+			 	 	$("#li_admin_entry").show();
+			 	 	$("#li_admin_dropdown").show();
+			 	 }
 			 	 //退出登录
 			 	 $("#logout").click(function(){
 			 		delCookie("userName");
 			 		delCookie("userId");
-			 		window.location.href="edit.html";
+			 		delCookie("userNick");
+			 		delCookie("userRole");
+			 		window.location.href="log_in.html";
 			 	 });
 			});	
 		</script>
@@ -145,6 +167,7 @@
                         <span class="fa fa-angle-down"></span>
                     </a>
                     <ul class="dropdown-menu animated flipInX pull-right" role="menu">
+                        <li id="li_admin_dropdown" style="display:none;"><a href="admin.html"><i class="fa fa-cog"></i> 后台管理</a></li>
                         <li><a href="change_password.html"><i class="fa fa-user"></i> 修改密码</a></li>
                         <li class="divider"></li>
                         <li><a id="logout" href="#" ><i class="fa fa-sign-out"></i> 退出登录</a></li>
@@ -154,11 +177,17 @@
             <form class="form-inline" onsubmit="return false;">
                 <button type="button" class="btn btn-default btn-expand-search"><i class="fa fa-search"></i></button>
                 <div class="toggle-search">
-                    <input type="text" class="form-control" placeholder="搜索笔记" id='search_note'>
+                    <input type="text" class="form-control" placeholder="搜索分享笔记(标题/内容)" id='search_note'>
                     <button type="button" class="btn btn-default btn-collapse-search"><i class="fa fa-times"></i></button>
                 </div>
             </form>
             <ul class="hidden-xs header-menu pull-right">
+                <li id="li_admin_entry" style="display:none;" title="系统管理后台">
+                    <a href="admin.html" style="color:#ffd97a;"><i class="fa fa-cog"></i> 后台管理</a>
+                </li>
+                <li>
+                    <a href="guest.html" target="_blank" title="分享广场">分享广场</a>
+                </li>
                 <li>
                     <a href="activity.html" target='_blank' title="笔记活动">活动</a>
                 </li>
@@ -342,12 +371,15 @@
 				</aside>
 			</div>
 			
-			<!-- 预览笔记 -->
+			<!-- 预览笔记(查看分享详情) -->
 			<div class="col-sm-7" id='pc_part_5' style='display:none;' >
 				<div class="pc_top_third">
 					<div class="row">
 						<div class="col-xs-9">
-							<h3>预览笔记</h3>
+							<h3>笔记预览</h3>
+						</div>
+						<div class="col-xs-3" style='text-align:right;'>
+							<button type="button" class="btn btn-default btn-xs" id='share_close_btn' title="返回笔记编辑"><i class="fa fa-reply"></i> 返回</button>
 						</div>
 					</div>
 				</div>
@@ -356,6 +388,12 @@
 						<div class="chat-contact">
 							<div class="contact-body clear_margin">
 								<h4 id="noput_note_title"></h4>
+								<div id="share_meta" style="color:#98a2ab;font-size:13px;margin:6px 0 14px;"></div>
+								<div id="share_body"></div>
+								<div id="share_actions" style="margin-top:22px;border-top:1px solid #eef1f4;padding-top:14px;">
+									<button type="button" class="btn btn-primary" id='share_like_btn'><i class="fa fa-star-o"></i> 收藏该分享</button>
+									<span style="color:#98a2ab;font-size:13px;margin-left:10px;" id="share_like_tip">收藏后可在"收藏笔记本"中查看</span>
+								</div>
 							</div>
 						</div>
 					</div>

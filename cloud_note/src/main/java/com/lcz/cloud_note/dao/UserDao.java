@@ -20,6 +20,10 @@ public interface UserDao {
 	public int countAdmin(Map<String,Object> params);
 	//后台: 修改用户状态(停用/启用)
 	public int updateStatus(Map<String,Object> params);
+	//后台: 修改用户角色(普通用户<=>管理员)
+	public int updateRole(Map<String,Object> params);
+	//后台: 查询全部管理员账号
+	public List<User> findAdmins();
 	//后台: 删除用户
 	public int deleteById(String userId);
 }

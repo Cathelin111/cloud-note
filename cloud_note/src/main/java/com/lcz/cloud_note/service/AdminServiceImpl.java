@@ -158,6 +158,89 @@ public class AdminServiceImpl implements AdminService {
 		return result;
 	}
 
+	//把普通用户提升为管理员(同时恢复其账号为正常状态, 确保可登录)
+	public NoteResult<Object> setAdmin(String adminId, String targetId) {
+		NoteResult<Object> result = new NoteResult<Object>();
+		if (checkAdmin(adminId) == null) {
+			return noPermission();
+		}
+		if (targetId == null || targetId.trim().isEmpty()) {
+			result.setStatus(1);
+			result.setMsg("参数不能为空");
+			return result;
+		}
+		User target = userDao.findById(targetId);
+		if (target == null) {
+			result.setStatus(2);
+			result.setMsg("用户不存在");
+			return result;
+		}
+		if ("admin".equals(target.getCn_user_role())) {
+			result.setStatus(3);
+			result.setMsg("该账号已经是管理员");
+			return result;
+		}
+		Map<String,Object> params = new HashMap<String,Object>();
+		params.put("userId", targetId);
+		params.put("role", "admin");
+		userDao.updateRole(params);
+		params.put("status", "normal");
+		userDao.updateStatus(params);
+		result.setStatus(0);
+		result.setMsg("已将用户 " + target.getCn_user_name() + " 提升为管理员, 可用\"管理员登录\"入口进入后台");
+		return result;
+	}
+
+	//直接新建管理员账号
+	public NoteResult<Object> addAdmin(String adminId, String name, String password, String nick) {
+		NoteResult<Object> result = new NoteResult<Object>();
+		if (checkAdmin(adminId) == null) {
+			return noPermission();
+		}
+		if (name == null || name.trim().isEmpty() || password == null || password.trim().isEmpty()) {
+			result.setStatus(1);
+			result.setMsg("用户名和密码不能为空");
+			return result;
+		}
+		if (password.trim().length() < 6) {
+			result.setStatus(1);
+			result.setMsg("密码长度不能小于6位");
+			return result;
+		}
+		String userName = name.trim();
+		User has = userDao.findByName(userName);
+		if (has != null) {
+			result.setStatus(1);
+			result.setMsg("用户名已被占用");
+			return result;
+		}
+		User user = new User();
+		user.setCn_user_id(NoteUtil.createId());
+		user.setCn_user_name(userName);
+		user.setCn_user_password(NoteUtil.md5(password.trim()));
+		user.setCn_user_nick((nick == null || nick.trim().isEmpty()) ? "管理员" : nick.trim());
+		user.setCn_user_role("admin");
+		user.setCn_user_status("normal");
+		user.setCn_user_create_time(System.currentTimeMillis());
+		userDao.save(user);
+		result.setStatus(0);
+		result.setMsg("管理员账号 " + userName + " 创建成功, 可用\"管理员登录\"入口进入后台");
+		return result;
+	}
+
+	//查询当前全部管理员账号(用于后台展示)
+	public NoteResult<List<User>> adminList(String adminId) {
+		NoteResult<List<User>> result = new NoteResult<List<User>>();
+		if (checkAdmin(adminId) == null) {
+			return noPermission();
+		}
+		List<User> list = userDao.findAdmins();
+		result.setStatus(0);
+		result.setMsg("查询成功");
+		result.setData(list);
+		return result;
+	}
+
 	/**
 	 * 级联删除用户数据: 分享/活动投稿(引用其笔记)→笔记→笔记本→用户
 	 */
@@ -166,11 +249,11 @@ public class AdminServiceImpl implements AdminService {
 		List<com.lcz.cloud_note.entity.Book> books = bookDao.findByUserId(userId);
 		if (books != null) {
 			for (com.lcz.cloud_note.entity.Book book : books) {
-				List<Map> notes = noteDao.findByBookId(book.getCn_notebook_id());
+				List<com.lcz.cloud_note.entity.Note> notes = noteDao.findByBookId(book.getCn_notebook_id());
 				if (notes != null) {
-					for (Map note : notes) {
-						if (note.get("cn_note_id") != null) {
-							noteIds.add((String) note.get("cn_note_id"));
+					for (com.lcz.cloud_note.entity.Note note : notes) {
+						if (note.getCn_note_id() != null) {
+							noteIds.add(note.getCn_note_id());
 						}
 					}
 				}
