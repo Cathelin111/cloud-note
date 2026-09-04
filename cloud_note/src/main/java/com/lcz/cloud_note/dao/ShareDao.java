@@ -26,4 +26,6 @@ public interface ShareDao {
 	public int deleteById(String shareId);
 	//删除引用指定笔记列表的分享(删除用户时级联清理)
 	public int deleteByNoteIds(List<String> noteIds);
+	//查询引用指定笔记列表的全部分享(数据导出用)
+	public List<Share> findByNoteIds(List<String> noteIds);
 }

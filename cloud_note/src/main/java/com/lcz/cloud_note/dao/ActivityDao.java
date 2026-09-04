@@ -27,4 +27,6 @@ public interface ActivityDao {
 	public int deleteNoteActivityByActivityId(String activityId);
 	//删除引用指定笔记列表的投稿(删除用户时级联清理)
 	public int deleteNoteActivityByNoteIds(List<String> noteIds);
+	//查询引用指定笔记列表的投稿(数据导出用)
+	public List<NoteActivity> findNoteActivityByNoteIds(List<String> noteIds);
 }

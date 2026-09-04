@@ -99,4 +99,10 @@ public class AdminController {
 	public NoteResult<Object> deleteActivity(String userId, String activityId){
 		return adminService.deleteActivity(userId, activityId);
 	}
+	//系统: 立即备份数据库
+	@RequestMapping("/system/backup.do")
+	@ResponseBody
+	public NoteResult<Object> systemBackup(String userId){
+		return adminService.systemBackup(userId);
+	}
 }

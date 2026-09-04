@@ -20,6 +20,7 @@ import com.lcz.cloud_note.entity.Share;
 import com.lcz.cloud_note.entity.User;
 import com.lcz.cloud_note.util.NoteResult;
 import com.lcz.cloud_note.util.NoteUtil;
+import com.lcz.cloud_note.web.DataBackup;
 
 @Service("adminService")
 @Transactional
@@ -37,6 +38,8 @@ public class AdminServiceImpl implements AdminService {
 	private BookDao bookDao;
 	@Resource
 	private NoteDao noteDao;
+	@Resource
+	private DataBackup dataBackup;
 
 	//================== 权限校验 ==================
 
@@ -430,5 +433,28 @@ public class AdminServiceImpl implements AdminService {
 		result.setStatus(0);
 		result.setMsg("活动已删除(该活动下的投稿一并清理)");
 		return result;
+	}
+
+	//系统: 立即备份数据库(生成完整SQL快照到数据目录/backup)
+	public NoteResult<Object> systemBackup(String adminId) {
+		NoteResult<Object> result = new NoteResult<Object>();
+		if (checkAdmin(adminId) == null) {
+			return noPermission();
+		}
+		try {
+			String path = dataBackup.backup(false);
+			if (path == null) {
+				result.setStatus(1);
+				result.setMsg("当前为MySQL数据库, 请使用 mysqldump 备份");
+				return result;
+			}
+			result.setStatus(0);
+			result.setMsg("备份完成: " + path);
+			return result;
+		} catch (Exception e) {
+			result.setStatus(5);
+			result.setMsg("备份失败: " + e.getMessage());
+			return result;
+		}
 	}
 }

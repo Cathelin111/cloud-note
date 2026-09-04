@@ -35,4 +35,6 @@ public interface AdminService {
 	public NoteResult<Object> saveActivity(String adminId, String activityId, String title, String body, String endTime);
 	//删除活动(同时删除其下投稿)
 	public NoteResult<Object> deleteActivity(String adminId, String activityId);
+	//系统: 立即备份数据库(H2), 返回备份文件路径
+	public NoteResult<Object> systemBackup(String adminId);
 }

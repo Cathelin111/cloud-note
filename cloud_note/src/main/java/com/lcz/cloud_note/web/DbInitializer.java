@@ -24,6 +24,8 @@ public class DbInitializer implements ApplicationListener<ContextRefreshedEvent>
 
 	@Resource
 	private DataSource dataSource;
+	@Resource
+	private DataBackup dataBackup;
 
 	public void onApplicationEvent(ContextRefreshedEvent event) {
 		try {
@@ -32,11 +34,17 @@ public class DbInitializer implements ApplicationListener<ContextRefreshedEvent>
 				if (tableExists(conn, "CN_USER")) {
 					//已有数据: 对旧版数据库做增量升级(游客/管理员功能新增的字段与种子数据)
 					upgradeExistingDb(conn);
-					return;
+				} else {
+					executeInitScript(conn);
 				}
-				executeInitScript(conn);
 			} finally {
 				conn.close();
+			}
+			//每日自动备份(当天已有备份则跳过; 非H2自动忽略)
+			try {
+				dataBackup.backup(true);
+			} catch (Exception e) {
+				System.err.println("[cloud_note] 每日备份失败(不影响启动): " + e.getMessage());
 			}
 		} catch (Exception e) {
 			throw new RuntimeException("数据库初始化失败: " + e.getMessage(), e);

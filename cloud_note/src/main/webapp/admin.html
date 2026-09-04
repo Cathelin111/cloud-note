@@ -93,6 +93,10 @@
                 <!-- 管理员管理 -->
                 <div class="adm-panel" id="panel_admins">
                     <h3><i class="fa fa-shield"></i> 管理员管理</h3>
+                    <div class="adm-toolbar">
+                        <button type="button" class="btn btn-warning" id="adm_backup"><i class="fa fa-database"></i> 立即备份数据库</button>
+                        <span class="adm-page" id="adm_backup_info" style="margin-left:10px;color:#98a2ab;">每日首次启动自动备份; 备份文件保存在数据目录的 backup 文件夹(保留最近15份)</span>
+                    </div>
                     <div class="adm-form" id="adm_create_form">
                         <div class="f-row"><label>用户名:</label><input type="text" id="adm_name" maxlength="50" placeholder="新管理员登录账号"></div>
                         <div class="f-row"><label>密码:</label><input type="password" id="adm_password" placeholder="至少6位"></div>
@@ -157,6 +161,6 @@
         <script type="text/javascript" src="scripts/common/jquery.min.js"></script>
         <script type="text/javascript" src="scripts/base.js?v=20260902-role"></script>
         <script type="text/javascript" src="scripts/cookie_util.js"></script>
-        <script type="text/javascript" src="scripts/admin.js?v=20260903-admin"></script>
+        <script type="text/javascript" src="scripts/admin.js?v=20260904-sync"></script>
     </body>
 </html>

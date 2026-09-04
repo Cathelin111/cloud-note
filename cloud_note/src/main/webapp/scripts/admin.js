@@ -96,6 +96,19 @@ $(function(){
 			}
 		});
 	});
+	//系统: 立即备份数据库
+	$("#adm_backup").click(function(){
+		if(!confirm("确认立即生成一份数据库备份吗?")){return;}
+		var $btn=$(this);
+		$btn.attr("disabled","disabled");
+		adminPost("system/backup.do",{},function(result){
+			$btn.removeAttr("disabled");
+			alert(result.msg);
+			if(result.status==0){
+				$("#adm_backup_info").text("最近备份: "+result.msg.replace("备份完成: ",""));
+			}
+		});
+	});
 	//分享行操作: 下架/上架/删除
 	$("#share_rows").on("click",".act-status",function(){
 		var shareId=$(this).attr("data-id");

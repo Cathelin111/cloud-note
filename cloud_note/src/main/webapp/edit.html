@@ -110,6 +110,34 @@
 			 	});
 			 	//关闭分享详情, 返回笔记编辑
 			 	$("#share_close_btn").click(closeShareView);
+			 	//导出我的全部数据(JSON下载, 用于备份/未来跨设备同步)
+			 	$("#export_my_data").click(function(){
+			 		var userId=getCookie("userId");
+			 		if(!userId){alert("请先登录");return;}
+			 		$.ajax({
+			 			url:base_path+"/data/export.do",
+			 			type:"post",
+			 			data:{"userId":userId},
+			 			dataType:"json",
+			 			success:function(result){
+			 				if(result.status!=0){alert(result.msg||"导出失败");return;}
+			 				var text=JSON.stringify(result.data,null,2);
+			 				var blob=new Blob([text],{type:"application/json;charset=utf-8"});
+			 				var url=URL.createObjectURL(blob);
+			 				var a=document.createElement("a");
+			 				a.href=url;
+			 				var d=new Date();
+			 				function p(n){return n<10?"0"+n:n;}
+			 				a.download="cloud_note_export_"+(getCookie("userName")||userId)+"_"+d.getFullYear()+p(d.getMonth()+1)+p(d.getDate())+"_"+p(d.getHours())+p(d.getMinutes())+".json";
+			 				document.body.appendChild(a);
+			 				a.click();
+			 				document.body.removeChild(a);
+			 				URL.revokeObjectURL(url);
+			 				alert("导出成功, 已开始下载JSON文件(可用作备份/未来同步导入)");
+			 			},
+			 			error:function(){alert("导出失败, 请稍后重试");}
+			 		});
+			 	});
 				 
 			 	 //笔记删除
 			 	 $("#note_ul").on("click",".btn_delete",alertDeleteNoteWindow);//功能在alert.js中
@@ -169,6 +197,7 @@
                     <ul class="dropdown-menu animated flipInX pull-right" role="menu">
                         <li id="li_admin_dropdown" style="display:none;"><a href="admin.html"><i class="fa fa-cog"></i> 后台管理</a></li>
                         <li><a href="change_password.html"><i class="fa fa-user"></i> 修改密码</a></li>
+                        <li><a href="javascript:void(0)" id="export_my_data" title="导出我的全部数据(JSON), 用于备份/未来跨设备同步"><i class="fa fa-download"></i> 导出我的数据</a></li>
                         <li class="divider"></li>
                         <li><a id="logout" href="#" ><i class="fa fa-sign-out"></i> 退出登录</a></li>
                     </ul>

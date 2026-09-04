@@ -90,4 +90,11 @@
 			#{noteId}
 		</foreach>
 	</delete>
+	<!-- 查询引用指定笔记列表的全部分享(数据导出用) -->
+	<select id="findByNoteIds" parameterType="list" resultType="com.lcz.cloud_note.entity.Share">
+		select * from cn_share where cn_note_id in
+		<foreach collection="list" item="noteId" open="(" separator="," close=")">
+			#{noteId}
+		</foreach>
+	</select>
 </mapper>
