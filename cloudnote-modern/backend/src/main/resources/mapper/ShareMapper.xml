@@ -40,4 +40,44 @@
         insert into cn_share(cn_share_id, cn_share_title, cn_share_body, cn_note_id)
         values(#{cn_share_id}, #{cn_share_title}, #{cn_share_body}, #{cn_note_id})
     </insert>
+
+    <!-- ============ 管理员后台 ============ -->
+    <select id="findAdminPage" parameterType="map" resultType="com.cloudnote.entity.Share">
+        select s.cn_share_id, s.cn_share_title, s.cn_share_body, s.cn_note_id, s.cn_share_status,
+               u.cn_user_nick as cn_share_author
+        from cn_share s
+        left join cn_note n on n.cn_note_id = s.cn_note_id
+        left join cn_user u on u.cn_user_id = n.cn_user_id
+        <where>
+            <if test="keyword != null and keyword != ''">
+                s.cn_share_title like #{keyword}
+            </if>
+        </where>
+        order by s.cn_share_id
+        limit #{pageSize} offset #{begin}
+    </select>
+
+    <select id="countAdmin" parameterType="string" resultType="int">
+        select count(*) from cn_share
+        <where>
+            <if test="keyword != null and keyword != ''">
+                cn_share_title like #{keyword}
+            </if>
+        </where>
+    </select>
+
+    <update id="updateStatus" parameterType="map">
+        update cn_share set cn_share_status = #{status} where cn_share_id = #{shareId}
+    </update>
+
+    <delete id="deleteById" parameterType="string">
+        delete from cn_share where cn_share_id = #{shareId}
+    </delete>
+
+    <delete id="deleteByNoteIds" parameterType="list">
+        delete from cn_share where cn_note_id in
+        <foreach collection="list" item="noteId" open="(" separator="," close=")">
+            #{noteId}
+        </foreach>
+    </delete>
 </mapper>

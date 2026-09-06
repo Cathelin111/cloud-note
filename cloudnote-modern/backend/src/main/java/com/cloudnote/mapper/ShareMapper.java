@@ -22,4 +22,20 @@ public interface ShareMapper {
     Share findById(@Param("shareId") String shareId);
 
     int insert(Share share);
+
+    //================= 管理员后台 =================
+
+    /** 全部分享分页(含已下架, 带作者昵称) */
+    List<Share> findAdminPage(@Param("keyword") String keyword,
+                              @Param("begin") int begin,
+                              @Param("pageSize") int pageSize);
+
+    int countAdmin(@Param("keyword") String keyword);
+
+    int updateStatus(@Param("shareId") String shareId, @Param("status") String status);
+
+    int deleteById(@Param("shareId") String shareId);
+
+    /** 删除引用这些笔记的分享(级联删用户) */
+    int deleteByNoteIds(List<String> noteIds);
 }

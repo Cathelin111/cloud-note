@@ -27,4 +27,7 @@ public interface NoteMapper {
     int move(@Param("noteId") String noteId, @Param("bookId") String bookId);
 
     int deleteById(@Param("noteId") String noteId);
+
+    /** 批量删除(级联删用户) */
+    int deleteByNoteIds(List<String> noteIds);
 }

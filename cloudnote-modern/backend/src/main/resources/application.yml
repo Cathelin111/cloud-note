@@ -34,6 +34,11 @@ jwt:
   secret: cloudnote-jwt-secret-key-please-change-in-production-2026
   expiration: 86400000
 
+# 后台备份(MySQL mysqldump)
+backup:
+  dir: ./backup
+  mysqldump: E:/mysql-9.6.0-winx64/bin/mysqldump.exe
+
 logging:
   level:
     com.cloudnote: debug

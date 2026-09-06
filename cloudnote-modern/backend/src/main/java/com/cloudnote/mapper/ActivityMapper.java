@@ -25,4 +25,17 @@ public interface ActivityMapper {
     int upSubmission(@Param("noteActivityId") String noteActivityId);
 
     int downSubmission(@Param("noteActivityId") String noteActivityId);
+
+    //================= 管理员后台(活动维护/级联) =================
+
+    int insertActivity(Activity activity);
+
+    int updateActivity(Activity activity);
+
+    int deleteActivityById(@Param("activityId") String activityId);
+
+    int deleteSubmissionByActivityId(@Param("activityId") String activityId);
+
+    /** 删除引用这些笔记的投稿(级联删用户) */
+    int deleteSubmissionByNoteIds(List<String> noteIds);
 }

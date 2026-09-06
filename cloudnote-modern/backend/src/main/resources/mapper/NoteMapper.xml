@@ -42,4 +42,11 @@
     <delete id="deleteById" parameterType="string">
         delete from cn_note where cn_note_id = #{noteId}
     </delete>
+
+    <delete id="deleteByNoteIds" parameterType="list">
+        delete from cn_note where cn_note_id in
+        <foreach collection="list" item="noteId" open="(" separator="," close=")">
+            #{noteId}
+        </foreach>
+    </delete>
 </mapper>

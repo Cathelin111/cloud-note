@@ -27,4 +27,35 @@
     <update id="updateStatus" parameterType="map">
         update cn_user set cn_user_status = #{status} where cn_user_id = #{userId}
     </update>
+
+    <!-- ============ 管理员后台 ============ -->
+    <select id="findAdminPage" parameterType="map" resultType="com.cloudnote.entity.User">
+        select * from cn_user
+        where cn_user_role = 'user'
+        <if test="keyword != null and keyword != ''">
+            and (cn_user_name like #{keyword} or COALESCE(cn_user_nick, '') like #{keyword})
+        </if>
+        order by cn_user_name
+        limit #{pageSize} offset #{begin}
+    </select>
+
+    <select id="countAdmin" parameterType="string" resultType="int">
+        select count(*) from cn_user
+        where cn_user_role = 'user'
+        <if test="keyword != null and keyword != ''">
+            and (cn_user_name like #{keyword} or COALESCE(cn_user_nick, '') like #{keyword})
+        </if>
+    </select>
+
+    <update id="updateRole" parameterType="map">
+        update cn_user set cn_user_role = #{role} where cn_user_id = #{userId}
+    </update>
+
+    <select id="findAdmins" resultType="com.cloudnote.entity.User">
+        select * from cn_user where cn_user_role = 'admin' order by cn_user_name
+    </select>
+
+    <delete id="deleteById" parameterType="string">
+        delete from cn_user where cn_user_id = #{userId}
+    </delete>
 </mapper>

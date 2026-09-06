@@ -42,4 +42,33 @@
         update cn_note_activity set cn_note_activity_down = cn_note_activity_down + 1
         where cn_note_activity_id = #{noteActivityId}
     </update>
+
+    <!-- ============ 管理员后台 ============ -->
+    <insert id="insertActivity" parameterType="com.cloudnote.entity.Activity">
+        insert into cn_activity(cn_activity_id, cn_activity_title, cn_activity_body, cn_activity_end_time)
+        values(#{cn_activity_id}, #{cn_activity_title}, #{cn_activity_body}, #{cn_activity_end_time})
+    </insert>
+
+    <update id="updateActivity" parameterType="com.cloudnote.entity.Activity">
+        update cn_activity set
+            cn_activity_title = #{cn_activity_title},
+            cn_activity_body = #{cn_activity_body},
+            cn_activity_end_time = #{cn_activity_end_time}
+        where cn_activity_id = #{cn_activity_id}
+    </update>
+
+    <delete id="deleteActivityById" parameterType="string">
+        delete from cn_activity where cn_activity_id = #{activityId}
+    </delete>
+
+    <delete id="deleteSubmissionByActivityId" parameterType="string">
+        delete from cn_note_activity where cn_activity_id = #{activityId}
+    </delete>
+
+    <delete id="deleteSubmissionByNoteIds" parameterType="list">
+        delete from cn_note_activity where cn_note_id in
+        <foreach collection="list" item="noteId" open="(" separator="," close=")">
+            #{noteId}
+        </foreach>
+    </delete>
 </mapper>
