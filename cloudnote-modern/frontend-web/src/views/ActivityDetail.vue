@@ -6,7 +6,7 @@
         <template #header>
           <div style="display:flex;justify-content:space-between;flex-wrap:wrap;gap:6px">
             <b>活动 #{{ id }} 的投稿</b>
-            <el-button type="primary" size="small" @click="joinDlg = true">参加活动</el-button>
+            <el-button type="primary" size="small" @click="onJoinClick">参加活动</el-button>
           </div>
         </template>
         <el-row :gutter="10">
@@ -113,8 +113,16 @@ async function collect() {
   if (res.status === 0) ElMessage.success(res.msg)
 }
 
-async function openJoin() {
+function onJoinClick() {
+  // 游客点击"参加活动"才引导登录
   if (!needLogin()) return
+  joinDlg.value = true
+  openJoin()
+}
+
+async function openJoin() {
+  // 打开"参加活动"弹窗: 游客不预载数据, 由按钮点击处引导登录
+  if (!userStore.isLogin) return
   const res = await notebookApi.list()
   if (res.status === 0) {
     myNotebooks.value = res.data || []
