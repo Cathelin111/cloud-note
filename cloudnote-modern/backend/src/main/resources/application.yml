@@ -4,6 +4,12 @@ server:
 spring:
   application:
     name: cloudnote-backend
+  mvc:
+    # 未匹配路由抛 NoHandlerFoundException -> 统一404 JSON
+    throw-exception-if-no-handler-found: true
+  web:
+    resources:
+      add-mappings: false
   datasource:
     url: jdbc:mysql://localhost:3306/cloudnote?useSSL=false&allowPublicKeyRetrieval=true&serverTimezone=Asia/Shanghai&characterEncoding=utf8
     username: root
@@ -20,7 +26,8 @@ mybatis:
   mapper-locations: classpath:mapper/*.xml
   type-aliases-package: com.cloudnote.entity
   configuration:
-    map-underscore-to-camel-case: true
+    # 实体沿用旧系统 cn_xxx 字段名, 保持大小写精确映射(不开启驼峰转换)
+    map-underscore-to-camel-case: false
 
 # JWT 配置(secret 至少32字符; 生产环境请改用环境变量注入)
 jwt:
