@@ -1,0 +1,45 @@
+<?xml version="1.0" encoding="UTF-8" ?>
+<!DOCTYPE mapper PUBLIC "-//mybatis.org//DTD Mapper 3.0//EN"
+        "https://mybatis.org/dtd/mybatis-3-mapper.dtd">
+<mapper namespace="com.cloudnote.mapper.ActivityMapper">
+
+    <select id="findAll" resultType="com.cloudnote.entity.Activity">
+        select * from cn_activity order by cn_activity_id
+    </select>
+
+    <select id="findSubmissionPage" parameterType="map" resultType="com.cloudnote.entity.NoteActivity">
+        select * from cn_note_activity
+        where cn_activity_id = #{activityId}
+        order by cn_note_activity_title
+        limit #{pageSize} offset #{begin}
+    </select>
+
+    <select id="countSubmissions" parameterType="string" resultType="int">
+        select count(*) from cn_note_activity where cn_activity_id = #{activityId}
+    </select>
+
+    <select id="findSubmissionById" parameterType="string" resultType="com.cloudnote.entity.NoteActivity">
+        select * from cn_note_activity where cn_note_activity_id = #{noteActivityId}
+    </select>
+
+    <insert id="insertSubmission" parameterType="com.cloudnote.entity.NoteActivity">
+        insert into cn_note_activity(
+            cn_note_activity_id, cn_activity_id, cn_note_id,
+            cn_note_activity_up, cn_note_activity_down,
+            cn_note_activity_title, cn_note_activity_body)
+        values(
+            #{cn_note_activity_id}, #{cn_activity_id}, #{cn_note_id},
+            #{cn_note_activity_up}, #{cn_note_activity_down},
+            #{cn_note_activity_title}, #{cn_note_activity_body})
+    </insert>
+
+    <update id="upSubmission" parameterType="string">
+        update cn_note_activity set cn_note_activity_up = cn_note_activity_up + 1
+        where cn_note_activity_id = #{noteActivityId}
+    </update>
+
+    <update id="downSubmission" parameterType="string">
+        update cn_note_activity set cn_note_activity_down = cn_note_activity_down + 1
+        where cn_note_activity_id = #{noteActivityId}
+    </update>
+</mapper>
