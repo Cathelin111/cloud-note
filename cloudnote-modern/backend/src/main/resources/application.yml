@@ -1,0 +1,32 @@
+server:
+  port: 8081
+
+spring:
+  application:
+    name: cloudnote-backend
+  datasource:
+    url: jdbc:mysql://localhost:3306/cloudnote?useSSL=false&allowPublicKeyRetrieval=true&serverTimezone=Asia/Shanghai&characterEncoding=utf8
+    username: root
+    password: "123456"
+    driver-class-name: com.mysql.cj.jdbc.Driver
+    hikari:
+      maximum-pool-size: 10
+      minimum-idle: 2
+  jackson:
+    date-format: yyyy-MM-dd HH:mm:ss
+    time-zone: Asia/Shanghai
+
+mybatis:
+  mapper-locations: classpath:mapper/*.xml
+  type-aliases-package: com.cloudnote.entity
+  configuration:
+    map-underscore-to-camel-case: true
+
+# JWT 配置(secret 至少32字符; 生产环境请改用环境变量注入)
+jwt:
+  secret: cloudnote-jwt-secret-key-please-change-in-production-2026
+  expiration: 86400000
+
+logging:
+  level:
+    com.cloudnote: debug
