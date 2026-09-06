@@ -1,0 +1,45 @@
+<?xml version="1.0" encoding="UTF-8" ?>
+<!DOCTYPE mapper PUBLIC "-//mybatis.org//DTD Mapper 3.0//EN"
+        "https://mybatis.org/dtd/mybatis-3-mapper.dtd">
+<mapper namespace="com.cloudnote.mapper.NotebookMapper">
+
+    <select id="findById" parameterType="string" resultType="com.cloudnote.entity.Book">
+        select b.*, t.cn_notebook_type_code
+        from cn_notebook b
+        join cn_notebook_type t on b.cn_notebook_type_id = t.cn_notebook_type_id
+        where b.cn_notebook_id = #{notebookId}
+    </select>
+
+    <select id="findAllByUserId" parameterType="string" resultType="com.cloudnote.entity.Book">
+        select b.*, t.cn_notebook_type_code
+        from cn_notebook b
+        join cn_notebook_type t on b.cn_notebook_type_id = t.cn_notebook_type_id
+        where b.cn_user_id = #{userId}
+        order by b.cn_notebook_createtime
+    </select>
+
+    <select id="findNormalByUserId" parameterType="string" resultType="com.cloudnote.entity.Book">
+        select b.*, t.cn_notebook_type_code
+        from cn_notebook b
+        join cn_notebook_type t on b.cn_notebook_type_id = t.cn_notebook_type_id
+        where b.cn_user_id = #{userId} and t.cn_notebook_type_code = 'normal'
+        order by b.cn_notebook_createtime desc
+    </select>
+
+    <insert id="insert" parameterType="com.cloudnote.entity.Book">
+        insert into cn_notebook(
+            cn_notebook_id, cn_user_id, cn_notebook_type_id, cn_notebook_name,
+            cn_notebook_desc, cn_notebook_createtime)
+        values(
+            #{cn_notebook_id}, #{cn_user_id}, #{cn_notebook_type_id}, #{cn_notebook_name},
+            #{cn_notebook_desc}, #{cn_notebook_createtime})
+    </insert>
+
+    <update id="updateName" parameterType="map">
+        update cn_notebook set cn_notebook_name = #{name} where cn_notebook_id = #{notebookId}
+    </update>
+
+    <delete id="deleteById" parameterType="string">
+        delete from cn_notebook where cn_notebook_id = #{notebookId}
+    </delete>
+</mapper>
