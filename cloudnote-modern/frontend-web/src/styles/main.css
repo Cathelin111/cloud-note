@@ -8,3 +8,14 @@ body { font-family: "Microsoft YaHei", "PingFang SC", Helvetica, Arial, sans-ser
 .rich-body { line-height: 1.9; word-break: break-word; }
 .nav-user { display: flex; align-items: center; gap: 8px; }
 .pointer { cursor: pointer; }
+.rich-body img { max-width: 100%; }
+
+/* ===== 窄屏(移动端)适配补充 ===== */
+@media (max-width: 480px) {
+  .page { padding: 8px; }
+  .rich-body img, .rich-body table { max-width: 100%; }
+}
+/* 行内 flex 工具条在窄屏自动换行, 防止溢出 */
+[style*="display:flex;gap:8px"] { flex-wrap: wrap; align-items: center; }
+
+
