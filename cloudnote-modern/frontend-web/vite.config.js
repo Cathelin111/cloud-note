@@ -10,7 +10,10 @@ export default defineConfig({
     }
   },
   server: {
-    host: true, // 监听所有网卡: 允许局域网/手机通过 http://<电脑IP>:5173 访问
+    // 监听所有网卡: 局域网/手机可通过 http://<电脑IP>:5173 访问
+    host: true,
+    // 允许通过公网域名/内网穿透隧道访问(开发演示用)
+    allowedHosts: true,
     port: 5173,
     proxy: {
       '/api': {
