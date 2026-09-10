@@ -3,29 +3,30 @@
 #
 #  作用:
 #    1) 检查/启动 新版后端(Spring Boot 8081) 与 前端(Vite 5173)
-#    2) 用 SSH 反向隧道把 5173 映射到一个公网 https 地址
+#    2) 建一条公网隧道, 把 5173 映射成一个公网 https 网址
 #    3) 打印手机可以直接打开的网址, 并写入 手机访问地址.txt
-#    4) 守护进程: 隧道掉线自动重建(重建后网址可能变化, 会重新打印并写入文件)
+#    4) 守护进程: 每 45 秒自检, 掉线自动重建(重建后网址可能变化, 会重新打印)
 #
 #  用法:
 #    双击 启动手机访问.bat
 #    或: powershell -ExecutionPolicy Bypass -File 启动手机公网访问.ps1
 #    常用参数:
-#      -Tunnel serveo   默认, 无时长限制(免费版手机首次打开会有一次“Continue to Site”提示页)
-#      -Tunnel pinggy   备用(免费版约 60 分钟一次, 同样有提示页)
-#      -Tunnel lhr      备用(localhost.run, 无提示页但实测容易掉线)
-#      -NoStart         不自动启动前后端, 只开隧道(适合已经手动起好了)
-#      -Stop            关闭已开的隧道
-#      -NoWatch         不做掉线守护(只开一次就退出等待)
+#      -Tunnel cf      默认: Cloudflare 快速隧道(cloudflared), 无广告/提示页
+#      -Tunnel serveo  备选: 不需要额外程序, 但手机首次打开有一次 “Continue to Site” 提示页
+#      -Tunnel pinggy  备选: 免费版约 60 分钟一次, 同样有提示页
+#      -Tunnel lhr     备选: localhost.run, 实测不稳(容易 no tunnel here)
+#      -NoStart        不自动启动前后端, 只开隧道(适合已经手动起好了)
+#      -NoWatch        不做掉线守护
+#      -Stop           关闭已开的隧道
 #
 #  注意:
 #    * 只暴露前端 5173; 后端 8081 与 MySQL 3306 都留在本机, 由 Vite 代理转发, 不暴露公网
 #    * 电脑要保持开机, 本窗口不要关
-#    * 免费隧道每次重建都会换一个网址(每次重跑脚本请以 手机访问地址.txt 为准)
+#    * 免费隧道每次重建都会换一个网址(重跑脚本请以 手机访问地址.txt 为准)
 # ============================================================
 param(
-    [ValidateSet('serveo', 'pinggy', 'lhr')]
-    [string]$Tunnel = 'serveo',
+    [ValidateSet('cf', 'serveo', 'pinggy', 'lhr')]
+    [string]$Tunnel = 'cf',
     [int]$FrontPort = 5173,
     [int]$BackPort = 8081,
     [switch]$Stop,
@@ -68,6 +69,23 @@ function Wait-Port([int]$port, [int]$timeoutSec) {
     return (Test-Port $port)
 }
 
+# 找 cloudflared.exe(Cloudflare 隧道客户端, 约 55MB, 不属于仓库)
+function Find-Cloudflared {
+    $cands = @(
+        (Join-Path $Root '.tools\cloudflared.exe'),
+        'E:\cloudnote\_tools\cloudflared.exe',
+        (Join-Path $env:LOCALAPPDATA 'cloudflared\cloudflared.exe'),
+        (Join-Path $env:ProgramFiles 'cloudflared\cloudflared.exe'),
+        (Join-Path $env:USERPROFILE 'cloudflared.exe')
+    )
+    foreach ($c in $cands) {
+        if ($c -and (Test-Path $c)) { return $c }
+    }
+    $cmd = Get-Command cloudflared.exe -ErrorAction SilentlyContinue
+    if ($cmd) { return $cmd.Source }
+    return $null
+}
+
 function Get-TunnelPid {
     if (-not (Test-Path $PidFile)) { return $null }
     $raw = (Get-Content $PidFile -ErrorAction SilentlyContinue | Select-Object -First 1)
@@ -91,8 +109,13 @@ function Stop-Tunnel {
 function Get-PublicUrl {
     if (-not (Test-Path $OutLog)) { return $null }
     $txt = Get-Content $OutLog -Raw -ErrorAction SilentlyContinue
-    if (-not $txt) { return $null }
-    $urls = [regex]::Matches($txt, 'https://[A-Za-z0-9\.\-]+') | ForEach-Object { $_.Value }
+    $txt2 = Get-Content $ErrLog -Raw -ErrorAction SilentlyContinue
+    $all = "$txt$txt2"
+    if (-not $all) { return $null }
+    $urls = [regex]::Matches($all, 'https://[A-Za-z0-9\.\-]+') | ForEach-Object { $_.Value }
+    foreach ($u in $urls) {
+        if ($u -match '\.trycloudflare\.com$') { return $u }
+    }
     foreach ($u in $urls) {
         if ($u -match 'serveousercontent\.com$') { return $u }
     }
@@ -109,12 +132,12 @@ function Get-PublicUrl {
 function Test-PublicUrl([string]$baseUrl) {
     $node = (Get-Command node -ErrorAction SilentlyContinue)
     if ($node) {
-        $js = "fetch(process.argv[1],{signal:AbortSignal.timeout(12000)}).then(r=>process.exit(r.ok?0:2)).catch(()=>process.exit(3))"
+        $js = "fetch(process.argv[1],{signal:AbortSignal.timeout(15000)}).then(r=>process.exit(r.ok?0:2)).catch(()=>process.exit(3))"
         & $node.Source -e $js "$baseUrl/api/ping" 2>$null | Out-Null
         return ($LASTEXITCODE -eq 0)
     }
     try {
-        $r = Invoke-WebRequest -Uri "$baseUrl/api/ping" -TimeoutSec 12 -UseBasicParsing -ErrorAction Stop
+        $r = Invoke-WebRequest -Uri "$baseUrl/api/ping" -TimeoutSec 15 -UseBasicParsing -ErrorAction Stop
         return ($r.StatusCode -eq 200)
     } catch {
         return $false
@@ -124,6 +147,16 @@ function Test-PublicUrl([string]$baseUrl) {
 function Start-TunnelProcess([string]$kind, [int]$port) {
     if (Test-Path $OutLog) { Remove-Item $OutLog -Force -ErrorAction SilentlyContinue }
     if (Test-Path $ErrLog) { Remove-Item $ErrLog -Force -ErrorAction SilentlyContinue }
+
+    if ($kind -eq 'cf') {
+        $cf = Find-Cloudflared
+        # cloudflared 默认走 QUIC(UDP), 部分网络会被挡; 指定 http2(TCP) 更稳
+        $cfArgs = @('tunnel', '--url', "http://localhost:$port", '--no-autoupdate', '--protocol', 'http2')
+        $p = Start-Process -FilePath $cf -ArgumentList $cfArgs -WindowStyle Hidden `
+            -RedirectStandardOutput $OutLog -RedirectStandardError $ErrLog -PassThru
+        Set-Content -Path $PidFile -Value $p.Id -Encoding ASCII
+        return $p
+    }
 
     $common = @('-o', 'StrictHostKeyChecking=accept-new',
                 '-o', 'ServerAliveInterval=20',
@@ -146,7 +179,16 @@ function Start-TunnelProcess([string]$kind, [int]$port) {
 
 function Write-UrlFile([string]$u, [string]$kind) {
     $stamp = Get-Date -Format 'yyyy-MM-dd HH:mm:ss'
-    $tunnelName = switch ($kind) { 'pinggy' { 'Pinggy' } 'lhr' { 'localhost.run' } default { 'serveo' } }
+    $tunnelName = switch ($kind) {
+        'cf'     { 'Cloudflare 快速隧道 (cloudflared)' }
+        'pinggy' { 'Pinggy' }
+        'lhr'    { 'localhost.run' }
+        default  { 'serveo' }
+    }
+    $tip = '手机直接打开即可'
+    if ($kind -eq 'serveo' -or $kind -eq 'pinggy') {
+        $tip = '手机首次打开会先出现提示页, 点一下 "Continue to Site" 即可进站'
+    }
     @"
 云笔记(新版) 手机公网访问地址
 生成时间: $stamp
@@ -156,7 +198,7 @@ function Write-UrlFile([string]$u, [string]$kind) {
 说明:
   1. 手机连 4G/5G 或任意 Wi-Fi 都能打开(不需要和电脑同一个网络)
   2. 电脑必须保持开机, 且本脚本窗口不要关闭
-  3. 免费隧道手机首次打开会先出现一个提示页, 点一下 "Continue to Site" 即可进站
+  3. $tip
   4. 隧道重建后网址会变, 以本文件为准(脚本会重新打印)
   5. 只暴露前端 5173, 后端 8081 与 MySQL 不对外网开放
 "@ | Set-Content -Path $UrlFile -Encoding UTF8
@@ -184,9 +226,18 @@ if ($oldId -and (Get-Process -Id $oldId -ErrorAction SilentlyContinue)) {
 }
 
 # 1) 依赖检查
-if (-not (Test-Path $SshExe)) {
+if ($Tunnel -eq 'cf') {
+    if (-not (Find-Cloudflared)) {
+        Say "没找到 cloudflared.exe(Cloudflare 隧道客户端)。" 'Red'
+        Say "任选一种方式准备好它, 然后重跑本脚本:" 'Yellow'
+        Say "  A) 下载到 E:\cloudnote\_tools\ (约 55MB):" 'Yellow'
+        Say "     Invoke-WebRequest 'https://gh.llkk.cc/https://github.com/cloudflare/cloudflared/releases/latest/download/cloudflared-windows-amd64.exe' -OutFile 'E:\cloudnote\_tools\cloudflared.exe'" 'Yellow'
+        Say "  B) 或改用不需要额外程序的隧道: -Tunnel serveo" 'Yellow'
+        return
+    }
+} elseif (-not (Test-Path $SshExe)) {
     Say "找不到 Windows 自带的 ssh.exe: $SshExe" 'Red'
-    Say "请先用管理员 PowerShell 执行(或改用 Git Bash):" 'Yellow'
+    Say "请先用管理员 PowerShell 执行(或改用 -Tunnel cf):" 'Yellow'
     Say "  Add-WindowsCapability -Online -Name OpenSSH.Client~~~~0.0.1.0" 'Yellow'
     return
 }
@@ -276,7 +327,7 @@ while ($true) {
     $proc = Start-TunnelProcess -kind $Tunnel -port $FrontPort
 
     $url = $null
-    $deadline = (Get-Date).AddSeconds(45)
+    $deadline = (Get-Date).AddSeconds(60)
     while ((Get-Date) -lt $deadline) {
         $url = Get-PublicUrl
         if ($url) { break }
@@ -286,15 +337,15 @@ while ($true) {
 
     if (-not $url) {
         Say "没能拿到公网地址, 隧道输出如下:" 'Red'
-        if (Test-Path $OutLog) { Get-Content $OutLog -Tail 15 }
-        if (Test-Path $ErrLog) { Get-Content $ErrLog -Tail 15 }
+        if (Test-Path $ErrLog) { Get-Content $ErrLog -Tail 12 }
+        if (Test-Path $OutLog) { Get-Content $OutLog -Tail 12 }
         Stop-Process -Id $proc.Id -Force -ErrorAction SilentlyContinue
         if ($attempt -ge 3) {
-            Say "连续失败 3 次, 请换一个隧道重试: -Tunnel pinggy" 'Red'
+            Say "连续失败 3 次。可换一个隧道重试: -Tunnel serveo" 'Red'
             return
         }
-        Say "5 秒后重试 ..." 'Yellow'
-        Start-Sleep -Seconds 5
+        Say "8 秒后重试 ..." 'Yellow'
+        Start-Sleep -Seconds 8
         continue
     }
 
@@ -308,7 +359,9 @@ while ($true) {
         Say "============================================================" 'Green'
         Say ""
         Say "  已写入文件: 手机访问地址.txt" 'DarkGray'
-        Say "  手机第一次打开会先看到一个提示页, 点 “Continue to Site” 即可进站。" 'DarkGray'
+        if ($Tunnel -eq 'serveo' -or $Tunnel -eq 'pinggy') {
+            Say "  手机第一次打开会先看到一个提示页, 点 “Continue to Site” 即可进站。" 'DarkGray'
+        }
         Say "  演示账号: admin/admin123 (管理员)、demo/123456 (普通用户)" 'DarkGray'
         Say "  关闭公网访问: 执行本脚本并加 -Stop" 'DarkGray'
         Say "  本窗口请保持打开(关掉窗口公网访问会中断)" 'Yellow'
@@ -335,7 +388,7 @@ while ($true) {
         }
         $fail++
         $failNote = ''
-        if (-not $alive) { $failNote = ' [ssh 已退出]' }
+        if (-not $alive) { $failNote = ' [隧道进程已退出]' }
         Say "[$(Get-Date -Format 'HH:mm:ss')] 隧道自检未通过 ($fail/3)$failNote" 'Yellow'
         if ($fail -ge 3) {
             Say "重建隧道中 ..." 'Yellow'
