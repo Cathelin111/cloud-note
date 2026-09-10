@@ -5,26 +5,32 @@
 #    1) 检查/启动 新版后端(Spring Boot 8081) 与 前端(Vite 5173)
 #    2) 用 SSH 反向隧道把 5173 映射到一个公网 https 地址
 #    3) 打印手机可以直接打开的网址, 并写入 手机访问地址.txt
+#    4) 守护进程: 隧道掉线自动重建(重建后网址可能变化, 会重新打印并写入文件)
 #
 #  用法:
 #    双击 启动手机访问.bat
 #    或: powershell -ExecutionPolicy Bypass -File 启动手机公网访问.ps1
 #    常用参数:
-#      -Tunnel pinggy   换用 Pinggy 隧道(默认用 localhost.run)
+#      -Tunnel serveo   默认, 无时长限制(免费版手机首次打开会有一次“Continue to Site”提示页)
+#      -Tunnel pinggy   备用(免费版约 60 分钟一次, 同样有提示页)
+#      -Tunnel lhr      备用(localhost.run, 无提示页但实测容易掉线)
 #      -NoStart         不自动启动前后端, 只开隧道(适合已经手动起好了)
 #      -Stop            关闭已开的隧道
+#      -NoWatch         不做掉线守护(只开一次就退出等待)
 #
 #  注意:
 #    * 只暴露前端 5173; 后端 8081 与 MySQL 3306 都留在本机, 由 Vite 代理转发, 不暴露公网
-#    * 电脑要保持开机, 本窗口不要关; 免费隧道偶尔掉线, 重跑一次即可(网址会变)
+#    * 电脑要保持开机, 本窗口不要关
+#    * 免费隧道每次重建都会换一个网址(每次重跑脚本请以 手机访问地址.txt 为准)
 # ============================================================
 param(
-    [ValidateSet('lhr', 'pinggy')]
-    [string]$Tunnel = 'lhr',
+    [ValidateSet('serveo', 'pinggy', 'lhr')]
+    [string]$Tunnel = 'serveo',
     [int]$FrontPort = 5173,
     [int]$BackPort = 8081,
     [switch]$Stop,
-    [switch]$NoStart
+    [switch]$NoStart,
+    [switch]$NoWatch
 )
 
 $ErrorActionPreference = 'Stop'
@@ -65,27 +71,31 @@ function Wait-Port([int]$port, [int]$timeoutSec) {
 function Get-TunnelPid {
     if (-not (Test-Path $PidFile)) { return $null }
     $raw = (Get-Content $PidFile -ErrorAction SilentlyContinue | Select-Object -First 1)
-    $id = 0
-    if ([int]::TryParse($raw, [ref]$id)) { return $id }
+    $procId = 0
+    if ([int]::TryParse($raw, [ref]$procId)) { return $procId }
     return $null
 }
 
 function Stop-Tunnel {
-    $id = Get-TunnelPid
-    if ($id -and (Get-Process -Id $id -ErrorAction SilentlyContinue)) {
-        Stop-Process -Id $id -Force -ErrorAction SilentlyContinue
-        Say "已关闭隧道进程 (PID $id)" 'Green'
+    $procId = Get-TunnelPid
+    if ($procId -and (Get-Process -Id $procId -ErrorAction SilentlyContinue)) {
+        Stop-Process -Id $procId -Force -ErrorAction SilentlyContinue
+        Say "已关闭隧道进程 (PID $procId)" 'Green'
     } else {
         Say "没有发现正在运行的隧道。" 'Yellow'
     }
     if (Test-Path $PidFile) { Remove-Item $PidFile -Force -ErrorAction SilentlyContinue }
 }
 
+# 从隧道输出里提取公网网址
 function Get-PublicUrl {
     if (-not (Test-Path $OutLog)) { return $null }
     $txt = Get-Content $OutLog -Raw -ErrorAction SilentlyContinue
     if (-not $txt) { return $null }
     $urls = [regex]::Matches($txt, 'https://[A-Za-z0-9\.\-]+') | ForEach-Object { $_.Value }
+    foreach ($u in $urls) {
+        if ($u -match 'serveousercontent\.com$') { return $u }
+    }
     foreach ($u in $urls) {
         if ($u -match '\.lhr\.life$') { return $u }
     }
@@ -93,6 +103,63 @@ function Get-PublicUrl {
         if ($u -match 'pinggy') { return $u }
     }
     return $null
+}
+
+# 从本机访问公网网址, 判断隧道是否真的通(优先用 node, 避免部分环境下 TLS 受限)
+function Test-PublicUrl([string]$baseUrl) {
+    $node = (Get-Command node -ErrorAction SilentlyContinue)
+    if ($node) {
+        $js = "fetch(process.argv[1],{signal:AbortSignal.timeout(12000)}).then(r=>process.exit(r.ok?0:2)).catch(()=>process.exit(3))"
+        & $node.Source -e $js "$baseUrl/api/ping" 2>$null | Out-Null
+        return ($LASTEXITCODE -eq 0)
+    }
+    try {
+        $r = Invoke-WebRequest -Uri "$baseUrl/api/ping" -TimeoutSec 12 -UseBasicParsing -ErrorAction Stop
+        return ($r.StatusCode -eq 200)
+    } catch {
+        return $false
+    }
+}
+
+function Start-TunnelProcess([string]$kind, [int]$port) {
+    if (Test-Path $OutLog) { Remove-Item $OutLog -Force -ErrorAction SilentlyContinue }
+    if (Test-Path $ErrLog) { Remove-Item $ErrLog -Force -ErrorAction SilentlyContinue }
+
+    $common = @('-o', 'StrictHostKeyChecking=accept-new',
+                '-o', 'ServerAliveInterval=20',
+                '-o', 'ServerAliveCountMax=3',
+                '-o', 'ExitOnForwardFailure=yes')
+
+    if ($kind -eq 'pinggy') {
+        $sshArgs = @('-p', '443') + $common + @("-R0:localhost:$port", 'a.pinggy.io')
+    } elseif ($kind -eq 'lhr') {
+        $sshArgs = $common + @('-R', "80:localhost:$port", 'nokey@localhost.run')
+    } else {
+        $sshArgs = $common + @('-R', "80:localhost:$port", 'serveo.net')
+    }
+
+    $p = Start-Process -FilePath $SshExe -ArgumentList $sshArgs -WindowStyle Hidden `
+        -RedirectStandardOutput $OutLog -RedirectStandardError $ErrLog -PassThru
+    Set-Content -Path $PidFile -Value $p.Id -Encoding ASCII
+    return $p
+}
+
+function Write-UrlFile([string]$u, [string]$kind) {
+    $stamp = Get-Date -Format 'yyyy-MM-dd HH:mm:ss'
+    $tunnelName = switch ($kind) { 'pinggy' { 'Pinggy' } 'lhr' { 'localhost.run' } default { 'serveo' } }
+    @"
+云笔记(新版) 手机公网访问地址
+生成时间: $stamp
+隧道方式: $tunnelName
+访问网址: $u
+
+说明:
+  1. 手机连 4G/5G 或任意 Wi-Fi 都能打开(不需要和电脑同一个网络)
+  2. 电脑必须保持开机, 且本脚本窗口不要关闭
+  3. 免费隧道手机首次打开会先出现一个提示页, 点一下 "Continue to Site" 即可进站
+  4. 隧道重建后网址会变, 以本文件为准(脚本会重新打印)
+  5. 只暴露前端 5173, 后端 8081 与 MySQL 不对外网开放
+"@ | Set-Content -Path $UrlFile -Encoding UTF8
 }
 
 # ------------------------------------------------------------
@@ -129,8 +196,8 @@ if (-not (Test-Port 3306)) {
     Say "       启动数据库: net start mysql96" 'Yellow'
 }
 
-# 2) 后端 8081
 if (-not $NoStart) {
+    # 2) 后端 8081
     if (Test-Port $BackPort) {
         Say "[1/3] 后端已在运行 (端口 $BackPort)" 'Green'
     } else {
@@ -198,80 +265,82 @@ if (-not $NoStart) {
     Say "[1/3][2/3] 已跳过前后端启动 (-NoStart)" 'DarkGray'
 }
 
-# 4) 开隧道
-Say "[3/3] 建立公网隧道 ($Tunnel) ..." 'Cyan'
-if (Test-Path $OutLog) { Remove-Item $OutLog -Force -ErrorAction SilentlyContinue }
-if (Test-Path $ErrLog) { Remove-Item $ErrLog -Force -ErrorAction SilentlyContinue }
+# 4) 建立隧道 + 掉线守护
+$attempt = 0
+$lastUrl = $null
 
-if ($Tunnel -eq 'pinggy') {
-    $remote = "0:localhost:$FrontPort"     # 让服务端随机分配端口
-    $sshArgs = @('-p', '443',
-                 '-o', 'StrictHostKeyChecking=accept-new',
-                 '-o', 'ServerAliveInterval=30',
-                 '-o', 'ExitOnForwardFailure=yes',
-                 "-R$remote",
-                 'a.pinggy.io')
-} else {
-    $remote = "80:localhost:$FrontPort"    # localhost.run 用 80 端口对外提供 https
-    $sshArgs = @('-o', 'StrictHostKeyChecking=accept-new',
-                 '-o', 'ServerAliveInterval=30',
-                 '-o', 'ExitOnForwardFailure=yes',
-                 '-R', $remote,
-                 'nokey@localhost.run')
-}
-
-$proc = Start-Process -FilePath $SshExe -ArgumentList $sshArgs -WindowStyle Hidden `
-    -RedirectStandardOutput $OutLog -RedirectStandardError $ErrLog -PassThru
-Set-Content -Path $PidFile -Value $proc.Id -Encoding ASCII
-
-$url = $null
-$deadline = (Get-Date).AddSeconds(45)
-while ((Get-Date) -lt $deadline) {
-    $url = Get-PublicUrl
-    if ($url) { break }
-    if ($proc.HasExited) { break }
-    Start-Sleep -Milliseconds 700
-}
-
-if (-not $url) {
-    Say "没能拿到公网地址, 隧道输出如下:" 'Red'
-    if (Test-Path $OutLog) { Get-Content $OutLog -Tail 20 }
-    if (Test-Path $ErrLog) { Get-Content $ErrLog -Tail 20 }
-    Say "可换一个隧道重试: -Tunnel pinggy" 'Yellow'
-    return
-}
-
-$stamp = Get-Date -Format 'yyyy-MM-dd HH:mm:ss'
-@"
-云笔记(新版) 手机公网访问地址
-生成时间: $stamp
-访问网址: $url
-
-说明:
-  1. 手机连 4G/5G 或任意 Wi-Fi 都能打开(不需要和电脑同一个网络)
-  2. 电脑必须保持开机, 且本脚本窗口不要关闭
-  3. 免费隧道掉线后重跑一次脚本即可, 网址会变(以本文件为准)
-  4. 只暴露前端 5173, 后端 8081 与 MySQL 不对外网开放
-"@ | Set-Content -Path $UrlFile -Encoding UTF8
-
-Say ""
-Say "============================================================" 'Green'
-Say "  手机访问地址(任意网络可用):" 'Green'
-Say "  $url" 'White'
-Say "============================================================" 'Green'
-Say ""
-Say "  已写入文件: 手机访问地址.txt" 'DarkGray'
-Say "  演示账号: admin/admin123 (管理员)、demo/123456 (普通用户)" 'DarkGray'
-Say "  关闭公网访问: 关掉本窗口, 或执行同目录脚本并加 -Stop" 'DarkGray'
-Say ""
-Say "  按 Ctrl+C 可退出本脚本(隧道仍在后台); 想彻底关闭请用 -Stop" 'Yellow'
-Say ""
-
-# 隧道保持运行期间, 脚本窗口保持打开(用轮询而非 Wait-Process, 兼容性更好)
 while ($true) {
-    if (-not (Get-Process -Id $proc.Id -ErrorAction SilentlyContinue)) { break }
-    Start-Sleep -Seconds 2
-}
+    $attempt++
+    Say "[3/3] 建立公网隧道 ($Tunnel, 第 $attempt 次) ..." 'Cyan'
 
-Say ""
-Say "隧道已结束(可能是掉线或被关闭)。重新运行本脚本即可再开一次。" 'Yellow'
+    $proc = Start-TunnelProcess -kind $Tunnel -port $FrontPort
+
+    $url = $null
+    $deadline = (Get-Date).AddSeconds(45)
+    while ((Get-Date) -lt $deadline) {
+        $url = Get-PublicUrl
+        if ($url) { break }
+        if ($proc.HasExited) { break }
+        Start-Sleep -Milliseconds 700
+    }
+
+    if (-not $url) {
+        Say "没能拿到公网地址, 隧道输出如下:" 'Red'
+        if (Test-Path $OutLog) { Get-Content $OutLog -Tail 15 }
+        if (Test-Path $ErrLog) { Get-Content $ErrLog -Tail 15 }
+        Stop-Process -Id $proc.Id -Force -ErrorAction SilentlyContinue
+        if ($attempt -ge 3) {
+            Say "连续失败 3 次, 请换一个隧道重试: -Tunnel pinggy" 'Red'
+            return
+        }
+        Say "5 秒后重试 ..." 'Yellow'
+        Start-Sleep -Seconds 5
+        continue
+    }
+
+    Write-UrlFile -u $url -kind $Tunnel
+
+    if ($url -ne $lastUrl) {
+        Say ""
+        Say "============================================================" 'Green'
+        Say "  手机访问地址(任意网络可用):" 'Green'
+        Say "  $url" 'White'
+        Say "============================================================" 'Green'
+        Say ""
+        Say "  已写入文件: 手机访问地址.txt" 'DarkGray'
+        Say "  手机第一次打开会先看到一个提示页, 点 “Continue to Site” 即可进站。" 'DarkGray'
+        Say "  演示账号: admin/admin123 (管理员)、demo/123456 (普通用户)" 'DarkGray'
+        Say "  关闭公网访问: 执行本脚本并加 -Stop" 'DarkGray'
+        Say "  本窗口请保持打开(关掉窗口公网访问会中断)" 'Yellow'
+        Say ""
+    } else {
+        Say "隧道已恢复, 网址不变: $url" 'Green'
+    }
+    $lastUrl = $url
+
+    if ($NoWatch) {
+        Say "已指定 -NoWatch: 不守护, 脚本退出后隧道仍在后台运行。" 'DarkGray'
+        return
+    }
+
+    # 守护循环: 每 45 秒自检一次, 连续 3 次不通就重建
+    $fail = 0
+    while ($true) {
+        Start-Sleep -Seconds 45
+        $alive = [bool](Get-Process -Id $proc.Id -ErrorAction SilentlyContinue)
+        if ($alive -and (Test-PublicUrl $url)) {
+            if ($fail -gt 0) { Say "[$(Get-Date -Format 'HH:mm:ss')] 隧道已恢复正常。" 'Green' }
+            $fail = 0
+            continue
+        }
+        $fail++
+        $failNote = ''
+        if (-not $alive) { $failNote = ' [ssh 已退出]' }
+        Say "[$(Get-Date -Format 'HH:mm:ss')] 隧道自检未通过 ($fail/3)$failNote" 'Yellow'
+        if ($fail -ge 3) {
+            Say "重建隧道中 ..." 'Yellow'
+            Stop-Process -Id $proc.Id -Force -ErrorAction SilentlyContinue
+            break
+        }
+    }
+}
