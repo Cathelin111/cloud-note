@@ -42,6 +42,10 @@ public class SecurityConfig {
             .authorizeHttpRequests(auth -> auth
                 .requestMatchers("/api/auth/**", "/api/public/**").permitAll()
                 .requestMatchers(HttpMethod.GET, "/api/ping").permitAll()
+                // 前端页面资源(单jar部署时由后端托管): 只是静态页面, 数据仍来自受保护的 /api/**
+                .requestMatchers("/", "/index.html", "/favicon.ico", "/assets/**",
+                                 "/login", "/register", "/shares",
+                                 "/activities", "/activities/**", "/notes", "/admin").permitAll()
                 .requestMatchers("/api/admin/**").hasRole("ADMIN")
                 .anyRequest().authenticated()
             )

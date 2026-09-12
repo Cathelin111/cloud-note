@@ -1,3 +1,15 @@
+-- ============================================================
+--  云笔记 CloudNote —— 数据库设计与初始化脚本
+--  适用: MySQL 8.x / 9.x
+--  用法: mysql -uroot -p < cloud_note.sql      (本文件自带建库与切换库)
+--  内容: 1) 建库 cloudnote  2) 10 张表结构与索引  3) 种子数据(含测试账号)
+--  账号: admin/admin123(管理员)  demo/123456(普通用户)
+--  说明: 表名沿用旧系统 cn_* 命名, 与旧版数据结构一致, 便于数据迁移
+-- ============================================================
+CREATE DATABASE IF NOT EXISTS `cloudnote`
+  DEFAULT CHARACTER SET utf8mb4 COLLATE utf8mb4_general_ci;
+USE `cloudnote`;
+
 /*
 Navicat MySQL Data Transfer
 
