@@ -112,18 +112,19 @@ function Get-PublicUrl {
     $txt2 = Get-Content $ErrLog -Raw -ErrorAction SilentlyContinue
     $all = "$txt$txt2"
     if (-not $all) { return $null }
-    $urls = [regex]::Matches($all, 'https://[A-Za-z0-9\.\-]+') | ForEach-Object { $_.Value }
+    $urls = [regex]::Matches($all, 'https://[A-Za-z0-9\.\-]+') | ForEach-Object { $_.Value } |
+            Where-Object { $_ -notmatch '://(api|www|developers|admin)\.' }
     foreach ($u in $urls) {
-        if ($u -match '\.trycloudflare\.com$') { return $u }
+        if ($u -match '^https://[A-Za-z0-9\-]+\.trycloudflare\.com$') { return $u }
     }
     foreach ($u in $urls) {
-        if ($u -match 'serveousercontent\.com$') { return $u }
+        if ($u -match '^https://[A-Za-z0-9\-]+\.serveousercontent\.com$') { return $u }
     }
     foreach ($u in $urls) {
-        if ($u -match '\.lhr\.life$') { return $u }
+        if ($u -match '^https://[A-Za-z0-9\-]+\.lhr\.life$') { return $u }
     }
     foreach ($u in $urls) {
-        if ($u -match 'pinggy') { return $u }
+        if ($u -match '^https://[A-Za-z0-9\-]+\.(free\.pinggy\.net|run\.pinggy-free\.link)$') { return $u }
     }
     return $null
 }
@@ -133,8 +134,14 @@ function Test-PublicUrl([string]$baseUrl) {
     $node = (Get-Command node -ErrorAction SilentlyContinue)
     if ($node) {
         $js = "fetch(process.argv[1],{signal:AbortSignal.timeout(15000)}).then(r=>process.exit(r.ok?0:2)).catch(()=>process.exit(3))"
-        & $node.Source -e $js "$baseUrl/api/ping" 2>$null | Out-Null
-        return ($LASTEXITCODE -eq 0)
+        $code = 3
+        try {
+            & $node.Source -e $js "$baseUrl/api/ping" 2>$null | Out-Null
+            $code = $LASTEXITCODE
+        } catch {
+            $code = 3
+        }
+        return ($code -eq 0)
     }
     try {
         $r = Invoke-WebRequest -Uri "$baseUrl/api/ping" -TimeoutSec 15 -UseBasicParsing -ErrorAction Stop
@@ -268,8 +275,11 @@ if (-not $NoStart) {
                    Sort-Object Name -Descending | ForEach-Object { Join-Path $_.FullName 'bin\java.exe' })
         foreach ($c in $cands) {
             if (Test-Path $c) {
-                $ver = (& $c -version 2>&1 | Select-Object -First 1)
-                if ($ver -match 'version "(\d+)' -and [int]$Matches[1] -ge 17) { $java = $c; break }
+                # java -version 输出到 stderr, 直接 & 会被 ErrorActionPreference=Stop 当错误中断,
+                # 所以经 cmd 取输出并吃掉退出码
+                $ver = ''
+                try { $ver = (cmd /c "`"$c`" -version 2>&1" | Select-Object -First 1) } catch { $ver = '' }
+                if ("$ver" -match 'version "(\d+)' -and [int]$Matches[1] -ge 17) { $java = $c; break }
             }
         }
         if (-not $java) {
@@ -317,39 +327,54 @@ if (-not $NoStart) {
 }
 
 # 4) 建立隧道 + 掉线守护
-$attempt = 0
+#    按顺序尝试: 首选隧道 -> 其余隧道; 只有"真的能访问"的网址才会被采用
+$order = @($Tunnel) + (@('cf', 'serveo', 'pinggy', 'lhr') | Where-Object { $_ -ne $Tunnel })
+$idx = 0
+$tries = 0            # 当前隧道已尝试次数
+$attempt = 0          # 总尝试次数
 $lastUrl = $null
 
 while ($true) {
+    $kind = $order[$idx]
     $attempt++
-    Say "[3/3] 建立公网隧道 ($Tunnel, 第 $attempt 次) ..." 'Cyan'
+    $tries++
+    Say "[3/3] 建立公网隧道 ($kind, 第 $attempt 次) ..." 'Cyan'
 
-    $proc = Start-TunnelProcess -kind $Tunnel -port $FrontPort
+    $proc = Start-TunnelProcess -kind $kind -port $FrontPort
 
+    # 拿网址 + 实测能不能通(网址出现不等于隧道可用)
     $url = $null
-    $deadline = (Get-Date).AddSeconds(60)
+    $deadline = (Get-Date).AddSeconds(90)
     while ((Get-Date) -lt $deadline) {
-        $url = Get-PublicUrl
-        if ($url) { break }
+        $cand = Get-PublicUrl
+        if ($cand) {
+            if (Test-PublicUrl $cand) { $url = $cand; break }
+        }
         if ($proc.HasExited) { break }
-        Start-Sleep -Milliseconds 700
+        Start-Sleep -Milliseconds 1000
     }
 
     if (-not $url) {
-        Say "没能拿到公网地址, 隧道输出如下:" 'Red'
-        if (Test-Path $ErrLog) { Get-Content $ErrLog -Tail 12 }
-        if (Test-Path $OutLog) { Get-Content $OutLog -Tail 12 }
+        Say "这个隧道没能拿到可用网址, 输出如下:" 'Red'
+        if (Test-Path $ErrLog) { Get-Content $ErrLog -Tail 8 }
+        if (Test-Path $OutLog) { Get-Content $OutLog -Tail 8 }
         Stop-Process -Id $proc.Id -Force -ErrorAction SilentlyContinue
-        if ($attempt -ge 3) {
-            Say "连续失败 3 次。可换一个隧道重试: -Tunnel serveo" 'Red'
-            return
+        if ($tries -ge 2) {
+            if ($idx -lt $order.Count - 1) {
+                $idx++
+                $tries = 0
+                Say "改用 $($order[$idx]) 隧道重试 ..." 'Yellow'
+            } else {
+                Say "所有隧道都试过了, 都没成功。请检查网络后重跑脚本。" 'Red'
+                return
+            }
         }
-        Say "8 秒后重试 ..." 'Yellow'
-        Start-Sleep -Seconds 8
+        Start-Sleep -Seconds 5
         continue
     }
+    $tries = 0
 
-    Write-UrlFile -u $url -kind $Tunnel
+    Write-UrlFile -u $url -kind $kind
 
     if ($url -ne $lastUrl) {
         Say ""
@@ -359,7 +384,7 @@ while ($true) {
         Say "============================================================" 'Green'
         Say ""
         Say "  已写入文件: 手机访问地址.txt" 'DarkGray'
-        if ($Tunnel -eq 'serveo' -or $Tunnel -eq 'pinggy') {
+        if ($kind -eq 'serveo' -or $kind -eq 'pinggy') {
             Say "  手机第一次打开会先看到一个提示页, 点 “Continue to Site” 即可进站。" 'DarkGray'
         }
         Say "  演示账号: admin/admin123 (管理员)、demo/123456 (普通用户)" 'DarkGray'
