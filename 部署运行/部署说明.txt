@@ -1,0 +1,114 @@
+========================================================
+ 云笔记 CloudNote —— 部署运行说明（免构建，直接跑）
+========================================================
+
+一、这个目录是什么
+--------------------------------------------------------
+这里放的是已经编译打包好的程序，不需要装 Maven、不需要 npm install，
+只要一台装了 JDK 17+ 和 MySQL 的机器就能直接运行：
+
+  cloudnote-backend-0.1.0-SNAPSHOT.jar   后端可执行包(约 31.5MB)
+        - 内含全部第三方 jar：Spring Boot 3.5 / Spring Security / MyBatis /
+          MySQL 驱动 / jjwt(JWT) / Jackson / Tomcat 等，共 49 个依赖
+        - 内含前端页面(打包进 static/)，所以一个 jar 就是完整应用
+  cloud_note.sql                         数据库脚本(建库 + 10 张表 + 索引 + 种子数据)
+  frontend-dist/                         前端构建产物(用 Nginx 单独部署时使用，可选)
+  启动云笔记.bat / 启动云笔记.ps1           一键启动脚本(自动找 JDK17+、启动、开浏览器)
+
+※ 如果 jar 不在这个目录里，说明你没解压完整；
+  也可以从源码自己打包：cd cloudnote-modern/backend && mvn clean package -DskipTests
+  产物在 target/cloudnote-backend-0.1.0-SNAPSHOT.jar，复制过来即可。
+
+
+二、三步跑起来
+--------------------------------------------------------
+第 1 步：装好 JDK 17+ 和 MySQL 8/9，并启动 MySQL 服务。
+
+  检查命令（在"命令提示符"里执行）：
+     java -version                          显示 17/21/25 才行；1.8 不行
+     dir /b /ad C:\ D:\ E:\ 2>nul | findstr /i mysql     看 MySQL 装在哪
+     sc query mysql80                       或 mysql96 / MySQL，看服务是否 RUNNING
+
+第 2 步：导入数据库（只需一次）
+
+  ⚠️ 注意：`<` 重定向是【命令提示符 cmd】的语法，PowerShell 里不能用
+     （PowerShell 会报"“<”运算符是为将来使用而保留的"）。
+
+  方式 A（推荐，在 PowerShell 里也能用）：
+     cmd /c "mysql -uroot -p < cloud_note.sql"
+
+  方式 B（在"命令提示符"里）：
+     mysql -uroot -p < cloud_note.sql
+
+  方式 C（mysql 不在 PATH 里时，用全路径；路径按实际安装位置改）：
+     "C:\Program Files\MySQL\MySQL Server 8.0\bin\mysql.exe" -uroot -p123456 < cloud_note.sql
+
+  方式 D（进入 mysql 交互模式再用 source，路径用正斜杠）：
+     mysql -uroot -p
+     mysql> source cloud_note.sql;
+     mysql> quit
+
+  方式 E（图形工具）：Navicat / MySQL Workbench / HeidiSQL 打开 cloud_note.sql 执行。
+
+  ❌ 不要用 PowerShell 管道： Get-Content .\cloud_note.sql | mysql -uroot -p
+     实测会把中文变成乱码(测试 -> 娴嬭瘯)，并在 INSERT 处语法报错、导入到一半失败。
+
+  导入成功的核对：
+     mysql -uroot -p -e "USE cloudnote; SELECT COUNT(*) FROM information_schema.tables WHERE table_schema='cloudnote'; SELECT cn_user_name,cn_user_role FROM cn_user; SELECT COUNT(*) FROM cn_activity;"
+     应该看到：10、admin/admin、demo/user、11
+
+  数据库账号密码不是 root/123456 时，启动时覆盖即可（见第 3 步）。
+
+第 3 步：启动
+
+  双击 启动云笔记.bat
+  （或命令行： java -jar cloudnote-backend-0.1.0-SNAPSHOT.jar
+              改密码： java -jar cloudnote-backend-0.1.0-SNAPSHOT.jar --spring.datasource.password=你的密码 ）
+
+  启动完成后浏览器打开：  http://localhost:8081/
+  测试账号： admin/admin123（管理员）   demo/123456（普通用户）   游客无需登录
+
+
+三、常见问题
+--------------------------------------------------------
+* 双击 bat 后出现一堆 "'xxx' 不是内部或外部命令"、乱码、或者弹出一个 PowerShell 交互窗口
+    → 这个 bug 已在当前版本修复（bat 内容改成纯 ASCII，中文提示由 ps1 打印）。
+      若你手上是旧包，可以直接用命令行启动：
+        powershell -ExecutionPolicy Bypass -File 启动云笔记.ps1
+
+* 'mysql' 不是内部或外部命令
+    → MySQL 的 bin 目录没加进 PATH。两个办法：
+      a) 用全路径： "C:\Program Files\MySQL\MySQL Server 8.0\bin\mysql.exe" -uroot -p < cloud_note.sql
+      b) 把 <MySQL安装目录>\bin 加进环境变量 Path（注意：改完必须【重开】命令提示符窗口才生效）
+         常见正确路径：C:\Program Files\MySQL\MySQL Server 8.0\bin
+
+* 系统找不到指定的文件 / Failed to open file 'cloud_note.sql', error: 2
+    → sql 文件不在当前目录。先 cd 到文件所在目录，或改用全路径；
+      压缩包没解压的话，文件其实还在 zip 里，先解压。
+
+* 提示 UnsupportedClassVersionError / 版本错误
+    → 用 JDK 8 跑了。启动脚本会自动从 C:\Program Files\Java 里挑 17 以上的 JDK，
+      如果装的位置特殊，请手动指定： $env:JAVA_HOME="D:\Java\jdk-21"; .\启动云笔记.ps1
+
+* 启动报数据库连接失败
+    → MySQL 服务没启动，或账号密码不对（默认 root/123456）。
+
+* 8081 端口被占用
+    → 换端口： java -jar cloudnote-backend-0.1.0-SNAPSHOT.jar --server.port=9090
+
+* 想让其他电脑访问
+    → 同一局域网：http://本机IP:8081/（放行防火墙 8081 端口）
+    → 不同网络：用仓库里的《公网访问与手机使用指南.md》建内网穿透隧道
+
+
+四、也可以用前后端分离方式运行（开发模式）
+--------------------------------------------------------
+  cd cloudnote-modern/backend         mvn spring-boot:run           # 后端 8081
+  cd cloudnote-modern/frontend-web    npm install && npm run dev     # 前端 5173
+此时访问 http://localhost:5173 ，Vite 会把 /api 代理到 8081。
+
+  前端单独部署到 Nginx 时，把 frontend-dist/ 的内容放到站点根目录，
+  并把 /api 反向代理到后端 8081：
+
+    location / { root /var/www/cloudnote; try_files $uri $uri/ /index.html; }
+    location /api/ { proxy_pass http://127.0.0.1:8081; }
